@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cookie Demo</title>
+    <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+    <h1>Cookie Demo</h1>
+    <p id="status">Checking cookies...</p>
+    <script>
+        const cookies = document.cookie;
+        document.getElementById('status').textContent = cookies ? `Cookies: ${cookies}` : 'No cookies set';
+    </script>
+    <p><a href="/cgi-bin/cookie.py">Set a test cookie</a></p>
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>
