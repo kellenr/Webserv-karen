@@ -221,11 +221,12 @@ h2 {
 }
 
 .footer {
-	text-align: center;
-	bottom: 30px;
-	right: 700px;
-	position: fixed;
-	padding: 20px;
-	color: #8e44ad;
-	font-size: 14px;
+       position: fixed;
+       left: 50%;
+       bottom: 10px;
+       transform: translateX(-50%);
+       padding: 20px;
+       text-align: center;
+       color: #8e44ad;
+       font-size: 14px;
 }

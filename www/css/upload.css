@@ -22,14 +22,15 @@ body.upload-page {
 }
 
 .upload-container::before {
-	content: '';
-	position: absolute;
-	top: -50%;
-	left: -50%;
-	width: 200%;
-	height: 200%;
-	background: radial-gradient(circle, rgba(255, 182, 193, 0.1) 0%, transparent 70%);
-	animation: rotate 20s linear infinite;
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        pointer-events: none;
+        background: radial-gradient(circle, rgba(255, 182, 193, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
 }
 
 @keyframes rotate {
