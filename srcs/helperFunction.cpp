@@ -3,22 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   helperFunction.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
+/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/16 17:19:59 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/11 14:13:53 by kbolon           ###   ########.fr       */
+/*   Updated: 2025/06/12 17:41:51 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/WebServ.hpp"
-#include "../include/ServerConfig.hpp"
-#include "../include/HttpStatus.hpp"
-#include "../include/Response.hpp"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <cstring>
-#include <cerrno>
-#include <iostream>
+#include "WebServ.hpp"
 
 std::string	intToStr(int n) {
 	std::ostringstream oss;
@@ -38,9 +30,9 @@ int	safe_socket(int domain, int type, int protocol) {
 /*
 int bind(int socket, const struct sockaddr *address, socklen_t address_len)
 
-The sin_port field is set to the port to which the application must bind. 
-It must be specified in network byte order. If sin_port is set to 0, the 
-caller leaves it to the system to assign an available port. 
+The sin_port field is set to the port to which the application must bind.
+It must be specified in network byte order. If sin_port is set to 0, the
+caller leaves it to the system to assign an available port.
 The application can call getsockname() to discover the port number assigned.
 */
 bool	safe_bind(int fd, sockaddr_in & addr) {
@@ -123,7 +115,14 @@ void serveStaticFile(std::string path, int client_fd, const ServerConfig &config
 
 	std::string body((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	file.close();
-	sendHtmlResponse(client_fd, 200, body);
+	// sendHtmlResponse(client_fd, 200, body);
+	Response resp;
+	std::string contentType = resp.getContentType(fullPath);
+	std::string response = Response::build(200, body, contentType);
+	ssize_t sent = send(client_fd, response.c_str(), response.size(), 0);
+	if (sent != (ssize_t)response.size()) {
+			std::cerr << "❌ Failed to send response for status code: " << sent << " of " << response.size() << " bytes\n";
+	}
 }
 
 std::string extractBoundary(const std::string& request) {
@@ -153,142 +152,16 @@ std::string extractBoundary(const std::string& request) {
 		} else {
 			return request.substr(boundaryStart, boundaryEnd - boundaryStart);
 		}
-	}	
+	}
 }
 
 /*
 * This is a complete rewrite of the upload handler using a direct byte-by-byte approach
 * designed specifically to handle binary file uploads correctly.
 */
-void handleUpload(const std::string &request, int client_fd, const ServerConfig &config) {
-	// Find the filename first
-	size_t filenamePos = request.find("filename=\"");
-	if (filenamePos == std::string::npos) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ No filename found in request.\n";
-		return;
-	}
-
-	size_t filenameStart = filenamePos + 10; // Length of "filename=\""
-	size_t filenameEnd = request.find("\"", filenameStart);
-	if (filenameEnd == std::string::npos) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Invalid filename format.\n";
-		return;
-	}
-
-	std::string filename = request.substr(filenameStart, filenameEnd - filenameStart);
-	if (filename.empty()) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Empty filename.\n";
-		return;
-	}
-	std::cout << "Filename: " << filename << std::endl;
-
-	// Find the double CRLF that marks the start of the file data
-	// This is the most reliable marker - find the Content-Type header first,
-	// then find the blank line that follows it
-	size_t contentTypePos = request.find("Content-Type:", filenameEnd);
-	if (contentTypePos == std::string::npos) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ No Content-Type header found for file part.\n";
-		return;
-	}
-
-	size_t contentStartMarker = request.find("\r\n\r\n", contentTypePos);
-	if (contentStartMarker == std::string::npos) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Could not find blank line after Content-Type.\n";
-		return;
-	}
-
-	// The actual file content starts immediately after the \r\n\r\n
-	size_t contentStart = contentStartMarker + 4;
-
-	// Extract the boundary string, handling both quoted and unquoted formats
-	std::string rawBoundary = extractBoundary(request);
-	if (rawBoundary.empty()) {
-		std::cerr << "❌ Empty boundary string.\n";
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		return;
-	}
-
-	// The boundary in the content will be prefixed with "--"
-	std::string boundary = "--" + rawBoundary;
-	std::cout << "Boundary: " << boundary << std::endl;
-
-	// Find the first occurrence of the boundary after the content start
-	size_t contentEnd = request.find(boundary, contentStart);
-	if (contentEnd == std::string::npos) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Could not find closing boundary.\n";
-		return;
-	}
-
-	// Check if there's a CRLF before the boundary and adjust for it
-	if (contentEnd >= 2 && request[contentEnd - 1] == '\n' && request[contentEnd - 2] == '\r') {
-			contentEnd -= 2; // Adjust to remove CRLF before boundary
-	}
-
-	// Extract the file content
-	if (contentEnd <= contentStart) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Invalid content boundaries (end <= start).\n";
-		return;
-	}
-
-	// Use c_str() and careful binary handling to preserve the exact bytes
-	size_t contentLength = contentEnd - contentStart;
-	std::cout << "Content length: " << contentLength << " bytes" << std::endl;
-
-	const char* fileData = request.c_str() + contentStart;
-
-	// Create a temporary file for debugging/comparison
-/*	std::string tempPath = "/tmp/upload_debug_" + filename;
-	std::ofstream tempFile(tempPath.c_str(), std::ios::binary);
-	if (tempFile.is_open()) {
-		tempFile.write(fileData, contentLength);
-		tempFile.close();
-		std::cout << "Debug file saved to " << tempPath << std::endl;
-	}*/
-
-	// Save to final destination
-	std::string filePath = config.root + "/upload/" + filename;
-	std::ofstream outFile(filePath.c_str(), std::ios::binary);
-	if (!outFile.is_open()) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Could not open destination file: " << filePath << "\n";
-		return;
-	}
-
-	outFile.write(fileData, contentLength);
-	outFile.close();
-
-	if (outFile.fail()) {
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-		std::cerr << "❌ Error writing file.\n";
-		return;
-	}
-
-	std::cout << "✅ File successfully saved: " << filePath << " (" << contentLength << " bytes)" << std::endl;
-
-	// Send success response with proper charset
-	// Create a response with a complete HTML5 document
-	std::string successPath = config.root + "/templates/upload_success.html";
-	std::ifstream successFile(successPath.c_str());
-	std::string body;
-
-	if (successFile.is_open()) {
-		body.assign((std::istreambuf_iterator<char>(successFile)),
-					std::istreambuf_iterator<char>());
-		successFile.close();
-	}
-	else
-		body = "<html><body><h1>Upload successful</h1></body></html>";
-	sendHtmlResponse(client_fd,  200, body);
-}
-
+//
 void sendHtmlResponse(int fd, int code, const std::string& body) {
+
 	std::string response = Response::build(code, body, "text/html");
 	ssize_t sent = send(fd, response.c_str(), response.size(), 0);
 	if (sent != (ssize_t)response.size()) {
@@ -305,16 +178,17 @@ std::string	getErrorPageBody(int code, const ServerConfig& config) {
 	std::map<int, std::string>::const_iterator it = config.error_pages.find(code);
 	if (it != config.error_pages.end()) {
 		std::string fullPath = config.root;
-		if (!fullPath.empty() && fullPath[fullPath.length() - 1] != '/' && it->second[0])
+		if (!fullPath.empty() && fullPath[fullPath.length() - 1] != '/')
 			fullPath += "/";
 		fullPath += it->second;
 		std::cerr << "Looking for: " << fullPath << std::endl;
-		
+
 		std::ifstream file(fullPath.c_str());
 		if (file.is_open()) {
 			std::string content((std::istreambuf_iterator<char>(file)),
 								std::istreambuf_iterator<char>());
 			file.close();
+			return content;
 		}
 	}
 	std::ostringstream oss;
@@ -335,7 +209,7 @@ We do not use exact match as an exact match would miss: location /images/cats/cu
  */
 LocationConfig matchLocation(const std::string& path, const ServerConfig& config) {
 	const std::vector<LocationConfig>& locations = config.locations;
-	
+
 	LocationConfig bestMatch;
 	size_t length = 0;
 
@@ -347,4 +221,21 @@ LocationConfig matchLocation(const std::string& path, const ServerConfig& config
 		}
 	}
 	return bestMatch;
+}
+
+void handleClientCleanup(int fd, std::vector<pollfd>& fds,
+		std::map<int, ClientConnection*>& clients, size_t& i) {
+	// Remove from clients map
+	std::map<int, ClientConnection*>::iterator it = clients.find(fd);
+	if (it != clients.end()) {
+		delete it->second;
+		clients.erase(it);
+	}
+
+	// Close socket
+	close(fd);
+
+	// Remove from poll fds
+	fds.erase(fds.begin() + i);
+	--i;
 }
