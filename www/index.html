@@ -5,7 +5,8 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>My Cute Photo Gallery</title>
 	<link rel="stylesheet" href="/style.css"/>
-	<link rel="stylesheet" href="/css/main.css">
+        <link rel="stylesheet" href="/css/main.css">
+        <script src="/scripts/theme.js"></script>
 </head>
 <body>
 	<!-- Floating decorations -->
@@ -71,10 +72,13 @@
 		<div class="status-item">
 			<span>Photos: <span id="photoCount">0</span></span>
 		</div>
-		<div class="status-item">
-			<span>Port: <span id="port-span"></span></span>
-		</div>
-	</div>
+                <div class="status-item">
+                        <span>Port: <span id="port-span"></span></span>
+                </div>
+                <div class="status-item">
+                        <span>Visits: <span id="visit-count">0</span></span>
+                </div>
+        </div>
 
 	<script>
 		// Global variables
@@ -324,22 +328,7 @@
 		`;
 		document.head.appendChild(style);
 
-		// Read cookies and apply to main gallery
-		function applyCookiePreferences() {
-			const theme = getCookie('gallery_theme') || 'pink';
-			const personality = getCookie('personality_mode') || 'bubbly';
-			const visitorName = getCookie('visitor_name');
-
-			// Apply theme to gallery
-			document.body.className = `theme-${theme} personality-${personality}`;
-
-			// Show personalized welcome
-			if (visitorName) {
-				showWelcomeMessage(`Welcome back, ${visitorName}! ✨`);
-			}
-		}
-
-		document.addEventListener('DOMContentLoaded', applyCookiePreferences);
+                // Theme and visit counter handled by theme.js
 
 	</script>
 
