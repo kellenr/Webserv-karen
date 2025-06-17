@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 13:58:50 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/12 23:10:34 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/16 18:29:37 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 This function takes the groups of Servers, Sockets etc
 and tries to initilise them
 */
-
 bool initialiseSockets(const std::vector<ServerConfig>& servers, std::vector<ServerSocket*>& serverSockets,
 			std::vector<struct pollfd>& fds, std::map<int, ServerSocket*>& fdToSocket) {
 	// Creates a ServerSocket, binds/listens on specified host/port, then configures the server.

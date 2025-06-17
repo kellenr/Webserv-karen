@@ -4,7 +4,20 @@
 # file, and performs a series of HTTP requests to ensure all basic methods
 # and CGI functionality work as expected.
 
-set -e
+set -euo pipefail
+
+# ensure we run from repo root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
+# cleanup handler to stop server if the script exits unexpectedly
+cleanup() {
+    if [ -n "${SERVER_PID:-}" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+        kill -INT "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
 PORT=8081
 SERVER=./webserv
 CONF_DIR=conf
@@ -42,13 +55,16 @@ function run_valgrind() {
         print_fail "Valgrind unavailable"
         return
     fi
-    valgrind --leak-check=full --error-exitcode=1 $SERVER $CONF_DIR/default.conf \
-        > /tmp/valgrind.log 2>&1 &
+    set +e
+    valgrind --leak-check=full --error-exitcode=1 \
+        $SERVER $CONF_DIR/default.conf > /tmp/valgrind.log 2>&1 &
     local pid=$!
     sleep 2
-    kill -INT $pid
+    kill -INT $pid 2>/dev/null || true
     wait $pid
-    if [ $? -eq 0 ]; then
+    local status=$?
+    set -e
+    if [ $status -eq 0 ]; then
         print_ok "Valgrind clean"
     else
         print_fail "Valgrind reported issues"
@@ -59,44 +75,51 @@ function run_valgrind() {
 function check_configs() {
     echo -e "${CYAN}Checking configuration files...${RESET}"
     for cfg in $CONF_DIR/*.conf; do
-        $SERVER $cfg > /tmp/server.log 2>&1 &
+        set +e
+        $SERVER "$cfg" > /tmp/server.log 2>&1 &
         local pid=$!
         sleep 1
-        if ps -p $pid > /dev/null; then
-            kill -INT $pid
-            wait $pid || true
-        else
-            wait $pid 2>/dev/null || true
+        if kill -0 $pid 2>/dev/null; then
+            kill -INT $pid 2>/dev/null || true
         fi
-        if [ $? -eq 0 ]; then
+        wait $pid
+        local status=$?
+        set -e
+        if [ $status -eq 0 ]; then
             print_ok "$cfg"
         else
             print_fail "$cfg"
-            cat /tmp/server.log | tail -n 2
+            tail -n 2 /tmp/server.log
         fi
     done
 }
 
 function start_server() {
+    set +e
     $SERVER $CONF_DIR/default.conf > /tmp/server.log 2>&1 &
     SERVER_PID=$!
+    set -e
     sleep 1
 }
 
 function stop_server() {
-    kill -INT $SERVER_PID
-    wait $SERVER_PID
+    if [ -n "${SERVER_PID:-}" ] && kill -0 $SERVER_PID 2>/dev/null; then
+        kill -INT $SERVER_PID 2>/dev/null || true
+    fi
+    wait $SERVER_PID 2>/dev/null || true
 }
 
 function http_test() {
     local desc=$1
     local expected=$2
     shift 2
-    local code=$(curl -s -o /tmp/out -w "%{http_code}" "$@")
+    local code
+    code=$(curl -s -o /tmp/out -w "%{http_code}" "$@")
     if [ "$code" = "$expected" ]; then
         print_ok "$desc"
     else
         print_fail "$desc (got $code)"
+        head -n 5 /tmp/out
     fi
 }
 
