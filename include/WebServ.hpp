@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/15 17:27:43 by keramos-          #+#    #+#             */
-/*   Updated: 2025/06/16 17:03:32 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/17 20:16:07 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -128,5 +128,7 @@ bool		fileExists(const std::string& path);
 bool		hasAllowedExtension(const std::string& filename);
 bool		parseArguments(int argc, char **argv, std::string &configPath);
 void		artwelcom();
+std::string	executeScript(const std::string& interpreter, const std::string& scriptPath, const Request& req);
+std::string	formatCGIResponse(const std::string& scriptOutput);
 
 #endif // WEBSERV_HPP

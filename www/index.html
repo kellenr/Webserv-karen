@@ -323,6 +323,24 @@
 			}
 		`;
 		document.head.appendChild(style);
+
+		// Read cookies and apply to main gallery
+		function applyCookiePreferences() {
+			const theme = getCookie('gallery_theme') || 'pink';
+			const personality = getCookie('personality_mode') || 'bubbly';
+			const visitorName = getCookie('visitor_name');
+
+			// Apply theme to gallery
+			document.body.className = `theme-${theme} personality-${personality}`;
+
+			// Show personalized welcome
+			if (visitorName) {
+				showWelcomeMessage(`Welcome back, ${visitorName}! ✨`);
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', applyCookiePreferences);
+
 	</script>
 
 	<!-- Footer -->
