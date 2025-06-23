@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/15 17:27:43 by keramos-          #+#    #+#             */
-/*   Updated: 2025/06/17 20:16:07 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/23 23:46:53 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,5 +130,9 @@ bool		parseArguments(int argc, char **argv, std::string &configPath);
 void		artwelcom();
 std::string	executeScript(const std::string& interpreter, const std::string& scriptPath, const Request& req);
 std::string	formatCGIResponse(const std::string& scriptOutput);
+
+// Chunked transfer functions (no class needed!)
+bool		useChunkedTransfer(const std::string& fullPath);
+bool		sendFileChunked(int fd, const std::string& fullPath, const std::string& contentType);
 
 #endif // WEBSERV_HPP

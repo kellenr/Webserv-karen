@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/12 03:08:22 by kellen            #+#    #+#             */
-/*   Updated: 2025/06/16 17:11:36 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/24 00:47:10 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -138,6 +138,8 @@ bool validateUploadFileSize(size_t fileSize, const ServerConfig& config) {
 bool writeFileToServer(const std::string& request, size_t contentStart, size_t contentLength,
 					const std::string& filePath) {
 
+	std::cout << "💾 Fast file writing to: " << filePath << std::endl;
+
 	// Create upload directory if needed
 	std::string uploadDir = filePath.substr(0, filePath.find_last_of('/'));
 	createDirectoryIfNotExists(uploadDir);
@@ -149,10 +151,47 @@ bool writeFileToServer(const std::string& request, size_t contentStart, size_t c
 		return false;
 	}
 
-	// Get pointer to file data and write it
+	// OPTIMIZED: Write data in chunks instead of all at once
+	const size_t WRITE_CHUNK_SIZE = 64 * 1024; // 64KB chunks
 	const char* fileData = request.c_str() + contentStart;
-	outFile.write(fileData, contentLength);
+	size_t remainingBytes = contentLength;
+	size_t bytesWritten = 0;
+
+	std::cout << "📝 Writing file in " << WRITE_CHUNK_SIZE << " byte chunks..." << std::endl;
+
+	while (remainingBytes > 0) {
+		size_t chunkSize = std::min(WRITE_CHUNK_SIZE, remainingBytes);
+
+		outFile.write(fileData + bytesWritten, chunkSize);
+		if (outFile.fail()) {
+			std::cerr << "❌ Error writing chunk at offset " << bytesWritten << std::endl;
+			outFile.close();
+			return false;
+		}
+
+		bytesWritten += chunkSize;
+		remainingBytes -= chunkSize;
+
+		// Optional: Show progress for very large files
+		if (contentLength > 10 * 1024 * 1024) { // > 10MB
+			double progress = (double)bytesWritten / contentLength * 100.0;
+			// if ((int)progress % 10 == 0) { // Every 10%
+			// 	std::cout << "📊 Write progress: " << (int)progress << "%" << std::endl;
+			// }
+			static int lastProgress = -1;
+			int currentProgress = (int)progress / 10 * 10; // Round to nearest 10%
+			if (currentProgress != lastProgress && currentProgress % 20 == 0) {
+				std::cout << "📊 Write progress: " << currentProgress << "%" << std::endl;
+				lastProgress = currentProgress;
+			}
+		}
+	}
+
 	outFile.close();
+	// Get pointer to file data and write it
+	// const char* fileData = request.c_str() + contentStart;
+	// outFile.write(fileData, contentLength);
+	// outFile.close();
 
 	// Check for write errors
 	if (outFile.fail()) {

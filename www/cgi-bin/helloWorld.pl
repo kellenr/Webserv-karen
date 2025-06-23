@@ -21,8 +21,8 @@ print <<"END";
     <h1>CGI with perl</h1>
     <h2>Hello World!</h2>
     <div style="margin-top: 20px;">
-      <form method="GET" action="/form.html">
-         <button type="submit">🔙 Back to Forms</button>
+      <form method="GET" action="/web/playground.html">
+         <button type="submit">🔙 Back to the Playground</button>
       </form>
     </div>
 </body>

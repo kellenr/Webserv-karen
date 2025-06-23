@@ -35,8 +35,8 @@ $joke = $jokes[$index];
         <input type="submit" value="Get Another Joke">
     </form>
     <div style="margin-top: 20px;">
-        <form method="GET" action="/form.html">
-           <button type="submit">🔙 Back to Forms</button>
+        <form method="GET" action="/web/playground.html">
+           <button type="submit">🔙 Back to Playground</button>
         </form>
     </div>
 </body>

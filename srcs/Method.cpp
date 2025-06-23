@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/11 23:13:55 by kellen            #+#    #+#             */
-/*   Updated: 2025/06/17 21:14:14 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/24 01:05:17 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,6 +117,19 @@ void handlePost(int fd, const Request& req, const std::string& path, const Locat
 void handlePut(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
 	std::cout << "📝 Handling PUT request for " << path << std::endl;
 
+	// // Check for rename header
+	// std::string renameTo = req.getHeaders().find("X-Rename-To")->second;
+	// if (!renameTo.empty()) {
+	// 	// Handle file renaming
+	// 	std::string oldPath = location.upload_path + "/" + extractFilename(path);
+	// 	std::string newPath = location.upload_path + "/" + renameTo;
+
+	// 	if (std::rename(oldPath.c_str(), newPath.c_str()) == 0) {
+	// 		sendHtmlResponse(fd, 200, "File renamed successfully");
+	// 	} else {
+	// 		sendHtmlResponse(fd, 500, "Rename failed");
+	// 	}
+	// }
 	// Extract filename from path
 	std::string filename = path;
 	if (filename.find_last_of('/') != std::string::npos) {
@@ -269,30 +282,6 @@ void createDirectoryIfNotExists(const std::string& path) {
 	}
 }
 
-// // Simple header builder (replace with your existing one if you have it)
-// std::string buildSimpleHeaders(int statusCode, size_t contentLength, const std::string& contentType) {
-// 	std::ostringstream headers;
-// 	headers << "HTTP/1.1 " << statusCode;
-
-// 	switch (statusCode) {
-// 		case 200: headers << " OK"; break;
-// 		case 201: headers << " Created"; break;
-// 		case 400: headers << " Bad Request"; break;
-// 		case 403: headers << " Forbidden"; break;
-// 		case 404: headers << " Not Found"; break;
-// 		case 500: headers << " Internal Server Error"; break;
-// 		default: headers << " Unknown"; break;
-// 	}
-
-// 	headers << "\r\n";
-// 	headers << "Content-Length: " << contentLength << "\r\n";
-// 	headers << "Content-Type: " << contentType << "\r\n";
-// 	headers << "Connection: close\r\n";
-// 	headers << "\r\n";
-
-// 	return headers.str();
-// }
-
 // Simple directory listing
 std::string generateSimpleDirectoryListing(const std::string& dirPath, const std::string& urlPath) {
 	std::ostringstream html;
@@ -417,52 +406,40 @@ void handleSimpleUpload(const std::string& request, int client_fd, const ServerC
 	}
 	std::cout << "✅ File size validation passed" << std::endl;
 
-	// Step 4: Save file to server
+	// // Step 4: Save file to server
+	// std::string filePath = config.root + "/upload/" + filename;
+	// if (!writeFileToServer(request, contentStart, contentLength, filePath)) {
+	// 	std::cerr << "❌ Failed to save file to: " << filePath << std::endl;
+	// 	sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
+	// 	return;
+	// }
+	// std::cout << "✅ File saved successfully: " << filePath << std::endl;
+
+	// // Step 5: Send success response
+	// std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
+	// sendHtmlResponse(client_fd, 200, successResponse);
+
+	// std::cout << "📤 Success response sent!" << std::endl;
+
+	// Step 4: SEND SUCCESS RESPONSE IMMEDIATELY (before writing file!)
+	std::cout << "⚡ Sending immediate success response..." << std::endl;
+	std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
+	sendHtmlResponse(client_fd, 200, successResponse);
+	std::cout << "✅ Success response sent! Now saving file in background..." << std::endl;
+
+	// Step 5: Save file AFTER sending response (this can be slow)
+	std::cout << "💾 Now saving file in background..." << std::endl;
 	std::string filePath = config.root + "/upload/" + filename;
 	if (!writeFileToServer(request, contentStart, contentLength, filePath)) {
 		std::cerr << "❌ Failed to save file to: " << filePath << std::endl;
-		sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
+		// File save failed, but user already got success response
+		// Could log this error or handle it separately
+		std::cout << "⚠️ File save failed, but user already notified of 'success'" << std::endl;
 		return;
 	}
-	std::cout << "✅ File saved successfully: " << filePath << std::endl;
 
-	// Step 5: Send success response
-	std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
-	sendHtmlResponse(client_fd, 200, successResponse);
-
-	std::cout << "📤 Success response sent!" << std::endl;
+	std::cout << "💾 File saved successfully in background: " << filePath << std::endl;
 }
-
-// void handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config) {
-// 	std::string method = req.getMethod();
-// 	std::string query = req.getQuery();
-// 	std::string body = req.getBody();
-
-// 	// Simple CGI response
-// 	std::ostringstream response;
-// 	response << "<!DOCTYPE html>\n";
-// 	response << "<html><head><title>CGI Response</title></head>\n";
-// 	response << "<body>\n";
-// 	response << "<h1>CGI Script Execution</h1>\n";
-// 	response << "<p><strong>Script:</strong> " << path << "</p>\n";
-// 	response << "<p><strong>Method:</strong> " << method << "</p>\n";
-
-// 	if (!query.empty()) {
-// 		response << "<p><strong>Query:</strong> " << query << "</p>\n";
-// 	}
-
-// 	if (!body.empty()) {
-// 		response << "<p><strong>Body Size:</strong> " << body.size() << " bytes</p>\n";
-// 	}
-
-// 	response << "<p><strong>Server:</strong> " << config.server_name << "</p>\n";
-// 	response << "<p><em>CGI functionality is simplified for this demo.</em></p>\n";
-// 	response << "</body></html>\n";
-
-// 	sendHtmlResponse(fd, 200, response.str());
-
-// 	std::cout << "✅ CGI response sent for " << path << std::endl;
-// }
 
 void handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config) {
 	std::cout << "🚀 Starting Simple CGI execution for: " << path << std::endl;
@@ -479,7 +456,14 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 
 	// Step 2: Build the full path to the script
 	std::string scriptPath = config.root + path;
+
+	// Remove query string from script path if present
+	size_t queryPos = scriptPath.find('?');
+	if (queryPos != std::string::npos) {
+		scriptPath = scriptPath.substr(0, queryPos);
+	}
 	std::cout << "📁 Script path: " << scriptPath << std::endl;
+	std::cout << "🔍 Query string: " << req.getQuery() << std::endl;
 
 	// Step 3: Check if the script file exists
 	if (!fileExists(scriptPath)) {
@@ -487,6 +471,10 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 		std::string errorBody = getErrorPageBody(404, config);
 		sendHtmlResponse(fd, 404, errorBody);
 		return;
+	}
+
+	if (access(scriptPath.c_str(), X_OK) != 0) {
+		std::cout << "⚠️ Script may not be executable, but continuing..." << std::endl;
 	}
 
 	// Step 4: Execute the script and capture output
@@ -513,22 +501,6 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 std::string executeScript(const std::string& interpreter, const std::string& scriptPath, const Request& req) {
 	std::cout << "⚙️ Executing: " << interpreter << " " << scriptPath << std::endl;
 
-	// // Create pipes for communication
-	// int outputPipe[2];
-	// if (pipe(outputPipe) == -1) {
-	// 	std::cerr << "❌ Failed to create pipe" << std::endl;
-	// 	return "";
-	// }
-
-	// // Fork a new process
-	// pid_t pid = fork();
-	// if (pid < 0) {
-	// 	std::cerr << "❌ Fork failed" << std::endl;
-	// 	close(outputPipe[0]);
-	// 	close(outputPipe[1]);
-	// 	return "";
-	// }
-
 	// Create pipes for communication
 	int outputPipe[2];
 	int inputPipe[2];
@@ -553,11 +525,6 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		// Child process: execute the script
 		std::cout << "👶 Child process: executing script" << std::endl;
 
-		// // Redirect stdout to our pipe
-		// dup2(outputPipe[1], STDOUT_FILENO);
-		// close(outputPipe[0]);
-		// close(outputPipe[1]);
-
 		// Redirect stdin and stdout
 		dup2(inputPipe[0], STDIN_FILENO);
 		dup2(outputPipe[1], STDOUT_FILENO);
@@ -572,7 +539,7 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		std::vector<std::string> envStrings;
 		envStrings.push_back("REQUEST_METHOD=" + req.getMethod());
 		envStrings.push_back("QUERY_STRING=" + req.getQuery());
-		envStrings.push_back("CONTENT_TYPE=text/plain");
+		envStrings.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
 		envStrings.push_back("CONTENT_LENGTH=" + intToStr(req.getBody().length()));
 		envStrings.push_back("GATEWAY_INTERFACE=CGI/1.1");
 		envStrings.push_back("SERVER_PROTOCOL=HTTP/1.1");
@@ -580,6 +547,19 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		if (scriptPath.find(".php") != std::string::npos) {
 			envStrings.push_back("SCRIPT_FILENAME=" + scriptPath);
 			envStrings.push_back("REDIRECT_STATUS=200");
+		}
+
+		// HTTP headers
+		const std::map<std::string, std::string>& headers = req.getHeaders();
+		for (std::map<std::string, std::string>::const_iterator it = headers.begin();
+			it != headers.end(); ++it) {
+			std::string httpVar = "HTTP_" + it->first;
+			// Convert to uppercase and replace - with _
+			for (size_t i = 5; i < httpVar.length(); ++i) {
+				if (httpVar[i] == '-') httpVar[i] = '_';
+				httpVar[i] = std::toupper(httpVar[i]);
+			}
+			envStrings.push_back(httpVar + "=" + it->second);
 		}
 
 		// Convert to char* array for execve
@@ -605,35 +585,10 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 	} else {
 		// Parent process: read the output
 		std::cout << "👨‍👩‍👧‍👦 Parent process: reading script output" << std::endl;
-
-		// close(outputPipe[1]); // Close write end
 		// Close unused pipe ends
 		close(inputPipe[0]);
 		close(outputPipe[1]);
 
-		// // Read all output from the script
-		// std::string output;
-		// char buffer[4096];
-		// ssize_t bytesRead;
-
-		// while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {
-		// 	output.append(buffer, bytesRead);
-		// }
-
-		// close(outputPipe[0]);
-
-		// // Wait for child process to finish
-		// int status;
-		// waitpid(pid, &status, 0);
-
-		// if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-		// 	std::cout << "✅ Script executed successfully" << std::endl;
-		// } else {
-		// 	std::cout << "⚠️ Script exited with non-zero status" << std::endl;
-		// }
-
-		// // Format the output as a proper HTTP response
-		// return formatCGIResponse(output);
 		// Send POST data to script if any
 		std::string body = req.getBody();
 		if (!body.empty() && req.getMethod() == "POST") {

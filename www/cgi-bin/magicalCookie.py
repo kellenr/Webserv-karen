@@ -841,8 +841,8 @@ html_content += f"""
 
         <!-- Action Buttons -->
         <div style="text-align: center; margin: 30px 0;">
-            <a href="/forms.html" class="magic-button" style="text-decoration: none; background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);">
-                🔙 Back to Forms Hub
+            <a href="/web/playground.html" class="magic-button" style="text-decoration: none; background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);">
+                🔙 Back to the Playground
             </a>
 
             <a href="/" class="magic-button" style="text-decoration: none; background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);">

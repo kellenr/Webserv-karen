@@ -21,8 +21,8 @@ puts "<h1>CGI: Ruby Ruby Ruby!!</h1>"
 puts "<h2>Today's Weather</h2>"
 puts "<p>#{weather}</p>"
 puts ' <div style="margin-top: 20px;">
-        <form method="GET" action="/form.html">
-           <button type="submit">🔙 Back to Forms</button>
+        <form method="GET" action="/web/playground.html">
+           <button type="submit">🔙 Back to Playground</button>
         </form>
     </div>'
 puts "</body></html>"
