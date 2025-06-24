@@ -23,6 +23,7 @@
 #include <dirent.h> //to allow access to file directory
 #include <signal.h>
 #include "../include/ConfigParser.hpp"
+#include "../include/ServerConfig.hpp"
 #include <arpa/inet.h>
 
 std::string toLower(const std::string& str) {
@@ -77,7 +78,7 @@ int main(int ac, char **av) {
 	}
 
 	//initialise the first server
-	int port = servers[0].port;
+    int port = servers[0].ports.empty() ? 8080 : servers[0].ports[0];
 
 	std::cout << "Starting server on port: " << port << std::endl;
 	//creating socket
