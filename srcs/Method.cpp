@@ -11,6 +11,22 @@
 /* ************************************************************************** */
 
 #include "WebServ.hpp"
+#include <pthread.h>
+
+struct SaveFileArgs {
+    std::string request;
+    size_t      contentStart;
+    size_t      contentLength;
+    std::string filePath;
+};
+
+static void* saveFileThread(void* arg) {
+    SaveFileArgs* args = static_cast<SaveFileArgs*>(arg);
+    writeFileToServer(args->request, args->contentStart, args->contentLength,
+                      args->filePath);
+    delete args;
+    return NULL;
+}
 
 void handleGet(int fd, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
 	std::cout << "📥 Handling GET request for " << path << std::endl;
@@ -423,22 +439,26 @@ void handleSimpleUpload(const std::string& request, int client_fd, const ServerC
 
 	// Step 4: SEND SUCCESS RESPONSE IMMEDIATELY (before writing file!)
 	std::cout << "⚡ Sending immediate success response..." << std::endl;
-	std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
-	sendHtmlResponse(client_fd, 200, successResponse);
-	std::cout << "✅ Success response sent! Now saving file in background..." << std::endl;
+        std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
+        sendHtmlResponse(client_fd, 200, successResponse);
+        shutdown(client_fd, SHUT_WR);
+        std::cout << "✅ Success response sent! Saving file asynchronously..." << std::endl;
 
-	// Step 5: Save file AFTER sending response (this can be slow)
-	std::cout << "💾 Now saving file in background..." << std::endl;
-	std::string filePath = config.root + "/upload/" + filename;
-	if (!writeFileToServer(request, contentStart, contentLength, filePath)) {
-		std::cerr << "❌ Failed to save file to: " << filePath << std::endl;
-		// File save failed, but user already got success response
-		// Could log this error or handle it separately
-		std::cout << "⚠️ File save failed, but user already notified of 'success'" << std::endl;
-		return;
-	}
+        std::string filePath = config.root + "/upload/" + filename;
+        SaveFileArgs* args = new SaveFileArgs();
+        args->request = request;
+        args->contentStart = contentStart;
+        args->contentLength = contentLength;
+        args->filePath = filePath;
 
-	std::cout << "💾 File saved successfully in background: " << filePath << std::endl;
+        pthread_t tid;
+        if (pthread_create(&tid, NULL, saveFileThread, args) == 0) {
+                pthread_detach(tid);
+        } else {
+                std::cerr << "❌ Failed to create save thread, saving synchronously" << std::endl;
+                writeFileToServer(request, contentStart, contentLength, filePath);
+                delete args;
+        }
 }
 
 void handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config) {
@@ -599,7 +619,8 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 
 		// Read all output from the script
 		std::string output;
-		char buffer[4096];
+                // Use a larger buffer when reading CGI output
+                char buffer[8192];
 		ssize_t bytesRead;
 
 		while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {

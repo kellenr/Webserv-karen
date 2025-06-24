@@ -39,7 +39,8 @@ ClientConnection::~ClientConnection() {
 */
 int ClientConnection::recvFullRequest(int client_fd, const ServerConfig& config) {
 	//switched to vector to handle images and pdfs
-	char buffer[8192];//8 kb buffer size
+    // Read in bigger chunks for large uploads
+    char buffer[65536]; // 64KB buffer to speed up transfer
 	int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
 
 	if (bytes <= 0) {
