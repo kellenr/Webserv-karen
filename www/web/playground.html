@@ -7,7 +7,7 @@
 	<link rel="stylesheet" href="/style.css"/>
 	<link rel="stylesheet" href="/css/cgi-bin.css"/>
 </head>
-<body>
+<body class="cgi-bin">
 	<div class="container">
 		<!-- <h1>🚀 WebServ Playground</h1> -->
 		<h1>
@@ -74,15 +74,14 @@
 				<!-- <a href="/cgi-bin/crash.py" class="cgi-btn danger-btn">Simulate Crash</a> -->
 			</div>
 
-			<div class="cgi-card">
-				<span class="cgi-icon">⚠️</span>
-				<div class="cgi-title">Error Demo</div>
-				<div class="cgi-desc">Watch our custom error handling in action!</div>
-				<form method="GET" action="/cgi-bin/badscript.py">
-					<button type="submit" class="cgi-btn danger-btn">Trigger Error</button>
-				</form>
-				<!-- <a href="/cgi-bin/badscript.py" class="cgi-btn danger-btn">Trigger Error</a> -->
-			</div>
+                        <div class="cgi-card">
+                                <span class="cgi-icon">☕</span>
+                                <div class="cgi-title">Brew Coffee</div>
+                                <div class="cgi-desc">This demo purposely returns a 413 error.</div>
+                                <form method="GET" action="/cgi-bin/brew_coffee.py">
+                                        <button type="submit" class="cgi-btn danger-btn">Order Coffee</button>
+                                </form>
+                        </div>
 		</div>
 
 		<div class="cgi-card">
