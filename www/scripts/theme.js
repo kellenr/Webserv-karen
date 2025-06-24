@@ -3,16 +3,36 @@ function getCookie(name) {
     return match ? decodeURIComponent(match[1]) : null;
 }
 
+function setCookie(name, value, days) {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = name + '=' + encodeURIComponent(value) + '; Path=/; Expires=' + expires;
+}
+
+function incrementVisitCount() {
+    let count = parseInt(getCookie('visit_count') || '0', 10) + 1;
+    setCookie('visit_count', count, 365);
+    return count;
+}
+
+function ensureVisitBadge(count) {
+    let badge = document.getElementById('visit-badge');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'visit-badge';
+        badge.style.cssText = 'position:fixed;bottom:10px;right:10px;' +
+            'background:rgba(255,255,255,0.8);color:#ff1493;padding:4px 12px;' +
+            'border-radius:12px;font-size:0.9rem;z-index:999;box-shadow:0 0 5px rgba(0,0,0,0.2)';
+        badge.innerHTML = 'Visits: <span id="visit-count"></span>';
+        document.body.appendChild(badge);
+    }
+    document.getElementById('visit-count').textContent = count;
+}
+
 function applyCookieTheme() {
     const theme = getCookie('gallery_theme');
     const personality = getCookie('personality_mode');
     if (theme) document.body.classList.add('theme-' + theme);
     if (personality) document.body.classList.add('personality-' + personality);
-    const visitCount = getCookie('visit_count');
-    if (visitCount) {
-        const el = document.getElementById('visit-count');
-        if (el) el.textContent = visitCount;
-    }
 }
 
 function showWelcomeMessage(msg) {
@@ -24,4 +44,8 @@ function showWelcomeMessage(msg) {
     setTimeout(() => div.remove(), 3000);
 }
 
-document.addEventListener('DOMContentLoaded', applyCookieTheme);
+document.addEventListener('DOMContentLoaded', () => {
+    const count = incrementVisitCount();
+    applyCookieTheme();
+    ensureVisitBadge(count);
+});
