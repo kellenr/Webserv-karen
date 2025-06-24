@@ -151,15 +151,18 @@
 
 			photoGrid.innerHTML = photos.map((photo, index) => {
 				const timeAgo = getTimeAgo(photo.uploadTime);
-				const isImage = photo.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(photo.name);
+                                const isImage = photo.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(photo.name);
+                                const isVideo = photo.type === 'video' || /\.(mp4|avi|mov|webm|ogg)$/i.test(photo.name);
 
 				return `
 					<div class="photo-card" data-filename="${photo.name}">
-						${isImage ?
-							`<img src="/upload/${photo.name}" alt="${photo.name}" class="photo-preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-							<div class="photo-placeholder" style="display: none;">📷</div>` :
-							`<div class="photo-placeholder">📄</div>`
-						}
+                                                ${isImage ?
+                                                        `<img src="/upload/${photo.name}" alt="${photo.name}" class="photo-preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                                        <div class="photo-placeholder" style="display: none;">📷</div>` :
+                                                isVideo ?
+                                                        `<video src="/upload/${photo.name}" class="video-preview" controls></video>` :
+                                                        `<div class="photo-placeholder">📄</div>`
+                                                }
 						<div class="photo-info">
 							<div class="photo-filename">${photo.name}</div>
 							<div class="photo-actions">
