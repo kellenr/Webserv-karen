@@ -133,30 +133,44 @@ void handlePost(int fd, const Request& req, const std::string& path, const Locat
 void handlePut(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
 	std::cout << "📝 Handling PUT request for " << path << std::endl;
 
-	// // Check for rename header
-	// std::string renameTo = req.getHeaders().find("X-Rename-To")->second;
-	// if (!renameTo.empty()) {
-	// 	// Handle file renaming
-	// 	std::string oldPath = location.upload_path + "/" + extractFilename(path);
-	// 	std::string newPath = location.upload_path + "/" + renameTo;
+        // Optional rename feature using header "X-Rename-To"
+        const std::map<std::string, std::string>& headers = req.getHeaders();
+        std::map<std::string, std::string>::const_iterator renameIt = headers.find("x-rename-to");
+        std::string uploadPath = location.upload_path;
+        if (uploadPath.empty())
+                uploadPath = "www/upload"; // Default upload directory
 
-	// 	if (std::rename(oldPath.c_str(), newPath.c_str()) == 0) {
-	// 		sendHtmlResponse(fd, 200, "File renamed successfully");
-	// 	} else {
-	// 		sendHtmlResponse(fd, 500, "Rename failed");
-	// 	}
-	// }
-	// Extract filename from path
+        if (renameIt != headers.end() && !renameIt->second.empty()) {
+                std::string oldName = path;
+                if (oldName.find_last_of('/') != std::string::npos)
+                        oldName = oldName.substr(oldName.find_last_of('/') + 1);
+                std::string newName = renameIt->second;
+
+                if (newName.find("..") != std::string::npos || newName.find('/') != std::string::npos) {
+                        std::cout << "❌ Invalid rename target: " << newName << std::endl;
+                        std::string body = getErrorPageBody(400, config);
+                        sendHtmlResponse(fd, 400, body);
+                        return;
+                }
+
+                std::string oldPath = uploadPath + "/" + oldName;
+                std::string newPath = uploadPath + "/" + newName;
+                if (std::rename(oldPath.c_str(), newPath.c_str()) == 0) {
+                        std::cout << "✅ File renamed via PUT: " << oldPath << " -> " << newPath << std::endl;
+                        sendHtmlResponse(fd, 200, "File renamed successfully");
+                } else {
+                        std::cout << "❌ Failed to rename file: " << oldPath << std::endl;
+                        std::string body = getErrorPageBody(500, config);
+                        sendHtmlResponse(fd, 500, body);
+                }
+                return;
+        }
 	std::string filename = path;
 	if (filename.find_last_of('/') != std::string::npos) {
 		filename = filename.substr(filename.find_last_of('/') + 1);
 	}
 
 	// Construct full file path
-	std::string uploadPath = location.upload_path;
-	if (uploadPath.empty()) {
-		uploadPath = "www/upload"; // Default upload directory
-	}
 
 	std::string fullPath = uploadPath + "/" + filename;
 
@@ -655,8 +669,21 @@ std::string formatCGIResponse(const std::string& scriptOutput) {
 
 	// Check if the script already included HTTP headers
 	// if (scriptOutput.find("Content-Type:") != std::string::npos) {
-	size_t headerEnd = scriptOutput.find("\r\n\r\n");
-	if (headerEnd != std::string::npos && scriptOutput.find("Content-Type:") < headerEnd) {
+        size_t headerEnd = scriptOutput.find("\r\n\r\n");
+        size_t altEnd = scriptOutput.find("\n\n");
+        if (headerEnd == std::string::npos || (altEnd != std::string::npos && altEnd < headerEnd))
+                headerEnd = altEnd;
+
+        size_t ctPos = std::string::npos;
+        if (headerEnd != std::string::npos) {
+                std::string headerSection = scriptOutput.substr(0, headerEnd);
+                std::string lower = headerSection;
+                for (size_t i = 0; i < lower.size(); ++i)
+                        lower[i] = std::tolower(lower[i]);
+                ctPos = lower.find("content-type:");
+        }
+
+        if (headerEnd != std::string::npos && ctPos != std::string::npos) {
 		// Script provided its own headers, just add HTTP status line
 		std::cout << "✅ Script provided its own headers" << std::endl;
 		// Script provided its own headers, just add HTTP status line
