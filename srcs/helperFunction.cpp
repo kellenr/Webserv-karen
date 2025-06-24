@@ -431,7 +431,8 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 	}
 
 	// Send file in chunks
-	char buffer[8192];
+    // Larger buffer improves throughput for big files
+    char buffer[65536];
 	size_t totalBytesSent = 0;
 	size_t chunkCount = 0;
 

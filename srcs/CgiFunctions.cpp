@@ -154,7 +154,8 @@ void handleCgi(const Request req, int fd, const ServerConfig& config, std::strin
 		close(inputPipe[1]);
 
 		//read from CGI output and send to client
-		char buffer[4096];
+                // Larger buffer for faster CGI reads
+                char buffer[8192];
 		ssize_t bytes;
 		std::ostringstream response;
 

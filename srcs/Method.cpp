@@ -619,7 +619,8 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 
 		// Read all output from the script
 		std::string output;
-		char buffer[4096];
+                // Use a larger buffer when reading CGI output
+                char buffer[8192];
 		ssize_t bytesRead;
 
 		while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {
