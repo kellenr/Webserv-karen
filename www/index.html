@@ -330,12 +330,13 @@
 
 		// Read cookies and apply to main gallery
 		function applyCookiePreferences() {
-			const theme = getCookie('gallery_theme') || 'pink';
-			const personality = getCookie('personality_mode') || 'bubbly';
-			const visitorName = getCookie('visitor_name');
+                       const theme = getCookie('gallery_theme') || 'unicorn';
+                       const personality = getCookie('personality_mode') || 'bubbly';
+                       const visitorName = getCookie('visitor_name');
 
-			// Apply theme to gallery
-			document.body.className = `theme-${theme} personality-${personality}`;
+                       // Apply theme to gallery without removing existing classes
+                       document.body.classList.add('theme-' + theme);
+                       document.body.classList.add('personality-' + personality);
 
 			// Show personalized welcome
 			if (visitorName) {

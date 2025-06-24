@@ -197,6 +197,11 @@ visit_count += 1
 if visit_count > 1:
     magic_level = min(magic_level + 1, 100)  # Cap at 100 for maximum magic!
 
+# Always update visit-related cookies so the counter works correctly
+expire_date = (datetime.now() + timedelta(days=365)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+headers.append(f"Set-Cookie: visit_count={visit_count}; Path=/; Expires={expire_date}")
+headers.append(f"Set-Cookie: last_visit={datetime.now().isoformat()}; Path=/; Expires={expire_date}")
+
 # Get current personality info
 current_personality = personality_modes.get(personality, personality_modes['bubbly'])
 current_theme = gallery_themes.get(theme, gallery_themes['unicorn'])
