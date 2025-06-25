@@ -191,6 +191,7 @@ favorite_color = params.get('color', cookies.get('favorite_color', '#ff69b4'))
 magic_level = int(cookies.get('magic_level', '1'))
 visit_count = int(cookies.get('visit_count', '0'))
 last_visit = cookies.get('last_visit', '')
+reset_message = ""
 
 # Increment visit count and magic level!
 visit_count += 1
@@ -208,6 +209,7 @@ if action == 'reset':
                    'favorite_color', 'magic_level', 'visit_count', 'last_visit', 'cookie_happiness']
     for name in cookie_names:
         headers.append(f"Set-Cookie: {name}=; Path=/; Max-Age=0")
+
 
     # Reset everything to defaults
     visitor_name = ''
@@ -285,6 +287,7 @@ html_content = f"""
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍪 Magical Cookie Kingdom - Where Dreams Come True! ✨</title>
+    <script src="/scripts/theme.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
 
@@ -668,42 +671,6 @@ html_content = f"""
             </div>
         </div>
 
-        <!-- Personality Showcase -->
-        <div class="personality-showcase">
-            <h3 style="color: #ff1493; margin: 0 0 15px 0;">
-                🎭 Current Personality Mode: {personality.title()} {current_personality['emoji']}
-            </h3>
-            <p style="margin: 0; font-size: 1.1rem;">
-                {current_personality['message']}
-            </p>
-        </div>
-
-        <!-- Stats Wonderland -->
-        <div class="stats-wonderland">
-            <div class="stat-bubble">
-                <div class="stat-number">{visit_count}</div>
-                <div style="color: #666; font-weight: bold;">Magical Visits</div>
-                <div style="font-size: 0.9rem; color: #999;">You're getting more magical! ✨</div>
-            </div>
-
-            <div class="stat-bubble">
-                <div class="stat-number">{magic_level}</div>
-                <div style="color: #666; font-weight: bold;">Magic Level</div>
-                <div style="font-size: 0.9rem; color: #999;">{get_magic_status(magic_level)}</div>
-            </div>
-
-            <div class="stat-bubble">
-                <div class="stat-number">{len(cookies)}</div>
-                <div style="color: #666; font-weight: bold;">Active Cookies</div>
-                <div style="font-size: 0.9rem; color: #999;">Yummy digital treats! 🍪</div>
-            </div>
-
-            <div class="stat-bubble">
-                <div class="stat-number">{current_theme['emoji']}</div>
-                <div style="color: #666; font-weight: bold;">Current Theme</div>
-                <div style="font-size: 0.9rem; color: #999;">{current_theme['name']}</div>
-            </div>
-        </div>
 
         <!-- Fun Fact Box -->
         <div class="fun-fact-box">

@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/19 15:38:46 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/17 19:19:13 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/24 03:00:07 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,8 +154,7 @@ void handleCgi(const Request req, int fd, const ServerConfig& config, std::strin
 		close(inputPipe[1]);
 
 		//read from CGI output and send to client
-                // Larger buffer for faster CGI reads
-                char buffer[8192];
+		char buffer[8192];
 		ssize_t bytes;
 		std::ostringstream response;
 

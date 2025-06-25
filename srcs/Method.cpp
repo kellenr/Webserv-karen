@@ -6,38 +6,18 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/11 23:13:55 by kellen            #+#    #+#             */
-/*   Updated: 2025/06/24 01:05:17 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 01:37:17 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServ.hpp"
-#include <pthread.h>
 
-struct SaveFileArgs {
-    std::string request;
-    size_t      contentStart;
-    size_t      contentLength;
-    std::string filePath;
-};
-
-static void* saveFileThread(void* arg) {
-    SaveFileArgs* args = static_cast<SaveFileArgs*>(arg);
-    writeFileToServer(args->request, args->contentStart, args->contentLength,
-                      args->filePath);
-    delete args;
-    return NULL;
-}
-
-void handleGet(int fd, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
+void handleGet(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
 	std::cout << "📥 Handling GET request for " << path << std::endl;
 
 	// First: Check if this is a CGI request FIRST (highest priority)
 	if (path.find("/cgi-bin/") == 0) {
 		std::cout << "🔧 This is a CGI GET request, calling handleSimpleCGI" << std::endl;
-
-		// Create a simple GET request object for CGI
-		std::string requestLine = "GET " + path + " HTTP/1.1\r\n\r\n";
-		Request req(requestLine);
 
 		// Call our improved handleSimpleCGI function
 		handleSimpleCGI(fd, req, path, config);
@@ -133,44 +113,104 @@ void handlePost(int fd, const Request& req, const std::string& path, const Locat
 void handlePut(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
 	std::cout << "📝 Handling PUT request for " << path << std::endl;
 
-        // Optional rename feature using header "X-Rename-To"
-        const std::map<std::string, std::string>& headers = req.getHeaders();
-        std::map<std::string, std::string>::const_iterator renameIt = headers.find("x-rename-to");
-        std::string uploadPath = location.upload_path;
-        if (uploadPath.empty())
-                uploadPath = "www/upload"; // Default upload directory
+	// Check if this is a rename operation (look for X-Rename-To header)
+	const std::map<std::string, std::string>& headers = req.getHeaders();
+	std::map<std::string, std::string>::const_iterator renameIt = headers.find("x-rename-to");
 
-        if (renameIt != headers.end() && !renameIt->second.empty()) {
-                std::string oldName = path;
-                if (oldName.find_last_of('/') != std::string::npos)
-                        oldName = oldName.substr(oldName.find_last_of('/') + 1);
-                std::string newName = renameIt->second;
+	if (renameIt != headers.end() && !renameIt->second.empty()) {
+		// This is a RENAME operation
+		handleFileRename(fd, path, renameIt->second, location, config);
+		return;
+	}
 
-                if (newName.find("..") != std::string::npos || newName.find('/') != std::string::npos) {
-                        std::cout << "❌ Invalid rename target: " << newName << std::endl;
-                        std::string body = getErrorPageBody(400, config);
-                        sendHtmlResponse(fd, 400, body);
-                        return;
-                }
+	// This is a regular UPLOAD operation
+	handleFileUpload(fd, req, path, location, config);
+}
 
-                std::string oldPath = uploadPath + "/" + oldName;
-                std::string newPath = uploadPath + "/" + newName;
-                if (std::rename(oldPath.c_str(), newPath.c_str()) == 0) {
-                        std::cout << "✅ File renamed via PUT: " << oldPath << " -> " << newPath << std::endl;
-                        sendHtmlResponse(fd, 200, "File renamed successfully");
-                } else {
-                        std::cout << "❌ Failed to rename file: " << oldPath << std::endl;
-                        std::string body = getErrorPageBody(500, config);
-                        sendHtmlResponse(fd, 500, body);
-                }
-                return;
-        }
+// NEW FUNCTION: Handle file renaming
+void handleFileRename(int fd, const std::string& path, const std::string& newName,
+					const LocationConfig& location, const ServerConfig& config) {
+	std::cout << "🏷️ Handling file rename operation" << std::endl;
+
+	// Extract current filename from path
+	std::string currentFilename = path;
+	if (currentFilename.find_last_of('/') != std::string::npos) {
+		currentFilename = currentFilename.substr(currentFilename.find_last_of('/') + 1);
+	}
+
+	// Validate new filename
+	if (newName.empty()) {
+		std::cout << "❌ New filename is empty" << std::endl;
+		std::string body = getErrorPageBody(400, config);
+		sendHtmlResponse(fd, 400, body);
+		return;
+	}
+
+	// Security validation for new filename
+	if (newName.find("..") != std::string::npos ||
+		newName.find("/") != std::string::npos ||
+		newName.find("\\") != std::string::npos) {
+		std::cout << "❌ Invalid characters in new filename: " << newName << std::endl;
+		std::string body = getErrorPageBody(400, config);
+		sendHtmlResponse(fd, 400, body);
+		return;
+	}
+
+	// Construct file paths
+	std::string uploadPath = location.upload_path;
+	if (uploadPath.empty()) {
+		uploadPath = "www/upload";
+	}
+
+	std::string currentPath = uploadPath + "/" + currentFilename;
+	std::string newPath = uploadPath + "/" + newName;
+
+	// Check if current file exists
+	if (!fileExists(currentPath)) {
+		std::cout << "❌ File not found for rename: " << currentPath << std::endl;
+		std::string body = getErrorPageBody(404, config);
+		sendHtmlResponse(fd, 404, body);
+		return;
+	}
+
+	// Check if new filename already exists (prevent overwriting)
+	if (fileExists(newPath) && newPath != currentPath) {
+		std::cout << "❌ File already exists with new name: " << newPath << std::endl;
+		std::string body = "Error: A file with that name already exists";
+		sendHtmlResponse(fd, 409, body); // 409 Conflict
+		return;
+	}
+
+	// Perform the rename operation
+	if (std::rename(currentPath.c_str(), newPath.c_str()) == 0) {
+		std::cout << "✅ File renamed successfully: " << currentFilename << " → " << newName << std::endl;
+
+		// Send success response
+		std::string responseBody = "File renamed successfully: " + currentFilename + " → " + newName;
+		sendHtmlResponse(fd, 200, responseBody);
+	} else {
+		std::cout << "❌ Failed to rename file: " << strerror(errno) << std::endl;
+		std::string body = getErrorPageBody(500, config);
+		sendHtmlResponse(fd, 500, body);
+	}
+}
+
+// NEW FUNCTION: Handle regular file upload (your existing logic)
+void handleFileUpload(int fd, const Request& req, const std::string& path,
+					const LocationConfig& location, const ServerConfig& config) {
+	std::cout << "📁 Handling file upload operation" << std::endl;
+
+	// Extract filename from path
 	std::string filename = path;
 	if (filename.find_last_of('/') != std::string::npos) {
 		filename = filename.substr(filename.find_last_of('/') + 1);
 	}
 
 	// Construct full file path
+	std::string uploadPath = location.upload_path;
+	if (uploadPath.empty()) {
+		uploadPath = "www/upload"; // Default upload directory
+	}
 
 	std::string fullPath = uploadPath + "/" + filename;
 
@@ -198,6 +238,14 @@ void handlePut(int fd, const Request& req, const std::string& path, const Locati
 
 	file.write(body.c_str(), body.size());
 	file.close();
+
+	// Check if file was written successfully
+	if (!fileExists(fullPath)) {
+		std::cout << "❌ File was not created successfully: " << fullPath << std::endl;
+		std::string errorBody = getErrorPageBody(500, config);
+		sendHtmlResponse(fd, 500, errorBody);
+		return;
+	}
 
 	std::cout << "✅ File uploaded via PUT: " << fullPath << " (" << body.size() << " bytes)" << std::endl;
 
@@ -307,8 +355,13 @@ bool isDirectory(const std::string& path) {
 
 void createDirectoryIfNotExists(const std::string& path) {
 	struct stat st;
-	if (::stat(path.c_str(), &st) == -1) {  // Use :: to call global stat function
-		::mkdir(path.c_str(), 0755);  // Use :: to call global mkdir function
+	if (stat(path.c_str(), &st) == -1) {
+		// Directory doesn't exist, create it
+		if (mkdir(path.c_str(), 0755) == 0) {
+			std::cout << "📁 Created directory: " << path << std::endl;
+		} else {
+			std::cout << "❌ Failed to create directory: " << path << " - " << strerror(errno) << std::endl;
+		}
 	}
 }
 
@@ -406,73 +459,105 @@ std::string rewriteURL(const std::string& path, const ServerConfig& config, cons
 }
 
 void handleSimpleUpload(const std::string& request, int client_fd, const ServerConfig& config) {
-	std::cout << "🚀 Starting file upload process..." << std::endl;
+	std::cout << "🚀 Starting ENHANCED multiple file upload process..." << std::endl;
 
-	// Step 1: Extract filename
-	std::string filename;
-	if (!extractFilenameFromRequest(request, filename)) {
-		std::cerr << "❌ Failed to extract filename" << std::endl;
-		sendHtmlResponse(client_fd, 400, getErrorPageBody(400, config));
-		return;
-	}
-	std::cout << "📁 Extracted filename: " << filename << std::endl;
-
-	// Step 2: Find content boundaries
-	size_t contentStart, contentEnd;
-	if (!findFileContentBoundaries(request, filename, contentStart, contentEnd)) {
-		std::cerr << "❌ Failed to find content boundaries" << std::endl;
+	// Step 1: Extract boundary
+	std::string boundary = extractBoundary(request);
+	if (boundary.empty()) {
+		std::cerr << "❌ No boundary found in request" << std::endl;
 		sendHtmlResponse(client_fd, 400, getErrorPageBody(400, config));
 		return;
 	}
 
-	size_t contentLength = contentEnd - contentStart;
-	std::cout << "📏 Content length: " << contentLength << " bytes" << std::endl;
+	std::cout << "🔍 Using boundary: " << boundary << std::endl;
 
-	// Step 3: Validate file size
-	if (!validateUploadFileSize(contentLength, config)) {
-		std::cerr << "❌ File too large: " << contentLength << " bytes" << std::endl;
-		sendHtmlResponse(client_fd, 413, getErrorPageBody(413, config));
+	// Step 2: Process all files using YOUR existing functions
+	std::vector<std::string> successfulUploads;
+	std::vector<std::string> failedUploads;
+
+	size_t currentPos = 0;
+	int fileCount = 0;
+
+	while (true) {
+		// Use YOUR existing function to find next file section
+		size_t sectionStart = findNextFileSection(request, boundary, currentPos);
+		if (sectionStart == std::string::npos) {
+			break; // No more files found
+		}
+
+		fileCount++;
+		std::cout << "📁 Processing file #" << fileCount << "..." << std::endl;
+
+		// Find the end of this section (next boundary)
+		std::string fullBoundary = "--" + boundary;
+		size_t sectionEnd = request.find(fullBoundary, sectionStart);
+		if (sectionEnd == std::string::npos) {
+			sectionEnd = request.length();
+		}
+
+		// Use YOUR existing function to extract filename
+		std::string filename;
+		if (!extractFilenameFromSection(request, sectionStart, sectionEnd, filename)) {
+			std::cerr << "❌ Could not extract filename from section " << fileCount << std::endl;
+			currentPos = sectionEnd;
+			continue;
+		}
+
+		std::cout << "📄 Found file: " << filename << std::endl;
+
+		// Use YOUR existing function to find content boundaries
+		size_t contentStart, contentLength;
+		if (!findFileContentInSection(request, sectionStart, sectionEnd, contentStart, contentLength)) {
+			std::cerr << "❌ Could not find content boundaries for: " << filename << std::endl;
+			failedUploads.push_back(filename);
+			currentPos = sectionEnd;
+			continue;
+		}
+
+		// Step 3: Validate file size using YOUR existing function
+		if (!validateUploadFileSize(contentLength, config)) {
+			std::cerr << "❌ File too large: " << filename << " (" << contentLength << " bytes)" << std::endl;
+			failedUploads.push_back(filename);
+			currentPos = sectionEnd;
+			continue;
+		}
+
+		// Step 4: Save the file using YOUR existing function
+		std::string filePath = config.root + "/upload/" + filename;
+		if (writeFileToServer(request, contentStart, contentLength, filePath)) {
+			std::cout << "✅ Successfully uploaded: " << filename << std::endl;
+			successfulUploads.push_back(filename);
+		} else {
+			std::cerr << "❌ Failed to save: " << filename << std::endl;
+			failedUploads.push_back(filename);
+		}
+
+		// Move to next section
+		currentPos = sectionEnd;
+	}
+
+	// Step 5: Use YOUR existing response system
+	if (successfulUploads.empty() && failedUploads.empty()) {
+		std::cerr << "❌ No files found in request" << std::endl;
+		sendHtmlResponse(client_fd, 400, getErrorPageBody(400, config));
 		return;
 	}
-	std::cout << "✅ File size validation passed" << std::endl;
 
-	// // Step 4: Save file to server
-	// std::string filePath = config.root + "/upload/" + filename;
-	// if (!writeFileToServer(request, contentStart, contentLength, filePath)) {
-	// 	std::cerr << "❌ Failed to save file to: " << filePath << std::endl;
-	// 	sendHtmlResponse(client_fd, 500, getErrorPageBody(500, config));
-	// 	return;
-	// }
-	// std::cout << "✅ File saved successfully: " << filePath << std::endl;
+	if (failedUploads.empty()) {
+		// All files uploaded successfully - use YOUR existing success template
+		std::string filename = (successfulUploads.size() == 1) ?
+							successfulUploads[0] :
+							(intToStr(successfulUploads.size()) + " files");
 
-	// // Step 5: Send success response
-	// std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
-	// sendHtmlResponse(client_fd, 200, successResponse);
-
-	// std::cout << "📤 Success response sent!" << std::endl;
-
-	// Step 4: SEND SUCCESS RESPONSE IMMEDIATELY (before writing file!)
-	std::cout << "⚡ Sending immediate success response..." << std::endl;
-        std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
-        sendHtmlResponse(client_fd, 200, successResponse);
-        shutdown(client_fd, SHUT_WR);
-        std::cout << "✅ Success response sent! Saving file asynchronously..." << std::endl;
-
-        std::string filePath = config.root + "/upload/" + filename;
-        SaveFileArgs* args = new SaveFileArgs();
-        args->request = request;
-        args->contentStart = contentStart;
-        args->contentLength = contentLength;
-        args->filePath = filePath;
-
-        pthread_t tid;
-        if (pthread_create(&tid, NULL, saveFileThread, args) == 0) {
-                pthread_detach(tid);
-        } else {
-                std::cerr << "❌ Failed to create save thread, saving synchronously" << std::endl;
-                writeFileToServer(request, contentStart, contentLength, filePath);
-                delete args;
-        }
+		std::string successResponse = loadAndProcessSuccessTemplate(config, filename);
+		sendHtmlResponse(client_fd, 200, successResponse);
+		std::cout << "📤 All " << successfulUploads.size() << " files uploaded successfully!" << std::endl;
+	} else {
+		// Some or all files failed - use YOUR existing error system
+		std::string errorBody = getErrorPageBody(400, config);
+		sendHtmlResponse(client_fd, 400, errorBody);
+		std::cout << "❌ Upload failed for " << failedUploads.size() << " files" << std::endl;
+	}
 }
 
 void handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config) {
@@ -587,13 +672,23 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		const std::map<std::string, std::string>& headers = req.getHeaders();
 		for (std::map<std::string, std::string>::const_iterator it = headers.begin();
 			it != headers.end(); ++it) {
-			std::string httpVar = "HTTP_" + it->first;
-			// Convert to uppercase and replace - with _
-			for (size_t i = 5; i < httpVar.length(); ++i) {
-				if (httpVar[i] == '-') httpVar[i] = '_';
-				httpVar[i] = std::toupper(httpVar[i]);
+
+			std::string httpVar = "HTTP_";  // Start with HTTP_ prefix only
+
+			// Transform the header name: hyphens to underscores, all uppercase
+			for (size_t i = 0; i < it->first.length(); ++i) {
+				char c = it->first[i];
+				if (c == '-') {
+					httpVar += '_';
+				} else {
+					httpVar += std::toupper(static_cast<unsigned char>(c));
+				}
 			}
-			envStrings.push_back(httpVar + "=" + it->second);
+
+			std::string envVar = httpVar + "=" + it->second;
+			envStrings.push_back(envVar);
+
+			//std::cout << "✅ Added env var: " << envVar << std::endl;  // Debug output
 		}
 
 		// Convert to char* array for execve
@@ -610,7 +705,6 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 			NULL
 		};
 
-		// Execute the script
 		execve(interpreter.c_str(), args, &envp[0]);
 
 		// If we reach here, execve failed
@@ -633,8 +727,7 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 
 		// Read all output from the script
 		std::string output;
-                // Use a larger buffer when reading CGI output
-                char buffer[8192];
+		char buffer[8192];
 		ssize_t bytesRead;
 
 		while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {
@@ -668,22 +761,8 @@ std::string formatCGIResponse(const std::string& scriptOutput) {
 	std::cout << "📋 Formatting CGI response (" << scriptOutput.size() << " bytes)" << std::endl;
 
 	// Check if the script already included HTTP headers
-	// if (scriptOutput.find("Content-Type:") != std::string::npos) {
-        size_t headerEnd = scriptOutput.find("\r\n\r\n");
-        size_t altEnd = scriptOutput.find("\n\n");
-        if (headerEnd == std::string::npos || (altEnd != std::string::npos && altEnd < headerEnd))
-                headerEnd = altEnd;
-
-        size_t ctPos = std::string::npos;
-        if (headerEnd != std::string::npos) {
-                std::string headerSection = scriptOutput.substr(0, headerEnd);
-                std::string lower = headerSection;
-                for (size_t i = 0; i < lower.size(); ++i)
-                        lower[i] = std::tolower(lower[i]);
-                ctPos = lower.find("content-type:");
-        }
-
-        if (headerEnd != std::string::npos && ctPos != std::string::npos) {
+	size_t headerEnd = scriptOutput.find("\r\n\r\n");
+	if (headerEnd != std::string::npos && scriptOutput.find("Content-Type:") < headerEnd) {
 		// Script provided its own headers, just add HTTP status line
 		std::cout << "✅ Script provided its own headers" << std::endl;
 		// Script provided its own headers, just add HTTP status line

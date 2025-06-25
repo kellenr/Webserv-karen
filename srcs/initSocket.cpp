@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 13:58:50 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/16 18:29:37 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/24 21:00:34 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -200,7 +200,7 @@ void handleExistingClient(int fd, std::vector<pollfd> &fds,
 		// Handle different HTTP methods with CORRECT parameter order
 		if (method == "GET") {
 			// handleGET(fd, path, location, config)
-			handleGet(fd, path, location, config);
+			handleGet(fd, req, path, location, config);
 		} else if (method == "POST") {
 			// handlePOST(fd, req, path, location, config)
 			handlePost(fd, req, path, location, config);

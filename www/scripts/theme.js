@@ -29,11 +29,30 @@ function ensureVisitBadge(count) {
 }
 
 function applyCookieTheme() {
-    const theme = getCookie('gallery_theme');
-    const personality = getCookie('personality_mode');
-    if (theme) document.body.classList.add('theme-' + theme);
-    if (personality) document.body.classList.add('personality-' + personality);
+    const theme = getCookie('gallery_theme') || 'pink';
+    const personality = getCookie('personality_mode') || 'bubbly';
+    const visitorName = getCookie('visitor_name');
+
+	document.body.className = `theme-${theme} personality-${personality}`;
+
+	if (visitorName) {
+			showWelcomeMessage(`Welcome back, ${visitorName}! ✨`);
+	}
 }
+
+// function applyCookiePreferences() {
+// 	const theme = getCookie('gallery_theme') || 'pink';
+// 	const personality = getCookie('personality_mode') || 'bubbly';
+// 	const visitorName = getCookie('visitor_name');
+
+// 	document.body.className = `theme-${theme} personality-${personality}`;
+
+// 	if (visitorName) {
+// 			showWelcomeMessage(`Welcome back, ${visitorName}! ✨`);
+// 	}
+// }
+// document.addEventListener('DOMContentLoaded', applyCookiePreferences);
+
 
 function showWelcomeMessage(msg) {
     const div = document.createElement('div');

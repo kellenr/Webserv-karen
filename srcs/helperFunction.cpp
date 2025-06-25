@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/16 17:19:59 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/24 01:06:35 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 01:41:34 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -431,16 +431,13 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 	}
 
 	// Send file in chunks
-    // Larger buffer improves throughput for big files
-    char buffer[65536];
+	char buffer[65536];
 	size_t totalBytesSent = 0;
 	size_t chunkCount = 0;
 
 	while (file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
 		size_t bytesRead = file.gcount();
 		chunkCount++;
-
-		std::cout << "📦 Sending chunk #" << chunkCount << ": " << bytesRead << " bytes" << std::endl;
 
 		// Send chunk size in hexadecimal
 		std::ostringstream chunkHeader;
@@ -474,7 +471,6 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 	file.close();
 
 	// Send final chunk (size 0) to indicate end
-	std::cout << "📦 Sending final chunk (end marker)" << std::endl;
 	if (send(fd, "0\r\n\r\n", 5, 0) != 5) {
 		std::cerr << "❌ Failed to send final chunk" << std::endl;
 		return false;
@@ -484,5 +480,89 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 	std::cout << "   📊 Total chunks: " << chunkCount << std::endl;
 	std::cout << "   📏 Total bytes: " << totalBytesSent << std::endl;
 
+	return true;
+}
+
+/**
+ * Find the next file section in a multipart request starting from a given position
+ * Returns the start position of the file section, or std::string::npos if no more files
+ */
+size_t findNextFileSection(const std::string& request, const std::string& boundary, size_t startPos) {
+	std::string fullBoundary = "--" + boundary;
+
+	size_t pos = startPos;
+	while ((pos = request.find(fullBoundary, pos)) != std::string::npos) {
+		size_t sectionStart = pos + fullBoundary.length();
+
+		// Skip CRLF after boundary
+		if (sectionStart + 2 < request.length() &&
+			request.substr(sectionStart, 2) == "\r\n") {
+			sectionStart += 2;
+		}
+
+		// Check if this section contains a filename (is a file upload)
+		size_t nextBoundary = request.find(fullBoundary, sectionStart);
+		if (nextBoundary == std::string::npos) {
+			break; // No more sections
+		}
+
+		std::string section = request.substr(sectionStart, nextBoundary - sectionStart);
+		if (section.find("filename=\"") != std::string::npos) {
+			return sectionStart; // Found a file section
+		}
+
+		pos = nextBoundary;
+	}
+
+	return std::string::npos; // No more file sections found
+}
+
+/**
+ * Extract filename from a specific section of the request
+ */
+bool extractFilenameFromSection(const std::string& request, size_t sectionStart,
+							size_t sectionEnd, std::string& filename) {
+	std::string section = request.substr(sectionStart, sectionEnd - sectionStart);
+
+	size_t filenamePos = section.find("filename=\"");
+	if (filenamePos == std::string::npos) {
+		return false;
+	}
+
+	size_t filenameStart = filenamePos + 10; // Length of "filename=\""
+	size_t filenameEnd = section.find("\"", filenameStart);
+	if (filenameEnd == std::string::npos) {
+		return false;
+	}
+
+	filename = section.substr(filenameStart, filenameEnd - filenameStart);
+	return !filename.empty();
+}
+
+/**
+ * Find file content boundaries within a specific section
+ */
+bool findFileContentInSection(const std::string& request, size_t sectionStart,
+							size_t sectionEnd, size_t& contentStart, size_t& contentLength) {
+	// Find the end of headers within this section (marked by \r\n\r\n)
+	size_t headerEnd = request.find("\r\n\r\n", sectionStart);
+	if (headerEnd == std::string::npos || headerEnd >= sectionEnd) {
+		return false;
+	}
+
+	contentStart = headerEnd + 4; // Skip "\r\n\r\n"
+
+	// Content ends before the next boundary (minus trailing CRLF)
+	size_t contentEnd = sectionEnd;
+	if (contentEnd >= 2 &&
+		request.substr(contentEnd - 2, 2) == "\r\n") {
+		contentEnd -= 2;
+	}
+
+	if (contentEnd <= contentStart) {
+		return false;
+	}
+
+	contentLength = contentEnd - contentStart;
 	return true;
 }

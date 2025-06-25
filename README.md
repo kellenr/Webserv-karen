@@ -22,11 +22,3 @@ Welcome to **Webserv**, a custom-built HTTP server implemented in C++98. This pr
 - 🧪 Compatible with **browsers, curl, telnet, and testers**
 
 ---
-
-## 🚀 Recent Enhancements
-
-- Uploads are now saved asynchronously using a detached thread so the success page appears immediately.
-- The upload form uses AJAX with a progress bar to show real-time progress while files transfer.
-- Video files display inline previews alongside images.
-- A coffee-themed `413` error page and `brew_coffee.py` CGI script demonstrate custom error handling.
-

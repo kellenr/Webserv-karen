@@ -67,12 +67,6 @@ body.error-page {
 .error-404 .home-link { background-color: #ff1493; }
 .error-404 .home-link:hover { background-color: #ff69b4; }
 
-.error-413 { background-color: #fff0e6; }
-.error-413 .error-container h1 { color: #b5651d; }
-.error-413 .error-container h2 { color: #8b4513; }
-.error-413 .home-link { background-color: #b5651d; }
-.error-413 .home-link:hover { background-color: #8b4513; }
-
 .error-500 { background-color: #f0f0f0; }
 .error-500 .error-container h1 { color: #ff6347; }
 .error-500 .error-container h2 { color: #555; }

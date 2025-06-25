@@ -94,6 +94,10 @@ h1 {
 	background: linear-gradient(45deg, #ff50aa, #FFB6C1);
 }
 
+.coffee-btn {
+	background: linear-gradient(45deg, #8B4513, #d2b48c);
+}
+
 .info-btn {
 	background: linear-gradient(45deg, #3742fa, #2f3542);
 }

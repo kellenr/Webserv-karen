@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-print "Content-type: text/html; charset=utf-8\r\n\r\n";
+# print "Content-type: text/html; charset=utf-8\r\n\r\n";
 
 print <<"END";
 <html>

@@ -6,9 +6,9 @@
 	<title>42 WebServ - Developer's Playground</title>
 	<link rel="stylesheet" href="/style.css"/>
 	<link rel="stylesheet" href="/css/cgi-bin.css"/>
-        <script src="/scripts/theme.js"></script>
+	<script src="/scripts/theme.js"></script>
 </head>
-<body class="cgi-bin">
+<body>
 	<div class="container">
 		<!-- <h1>🚀 WebServ Playground</h1> -->
 		<h1>
@@ -21,7 +21,7 @@
 
 		<nav class="nav-buttons">
 			<a href="/index.html" class="nav-btn">🖼️ Home</a>
-			<a href="web/about.html" class="nav-btn">💕 About</a>
+			<a href="/web/about.html" class="nav-btn">💕 About</a>
 		</nav>
 
 		<div class="grid">
@@ -75,14 +75,16 @@
 				<!-- <a href="/cgi-bin/crash.py" class="cgi-btn danger-btn">Simulate Crash</a> -->
 			</div>
 
-                        <div class="cgi-card">
-                                <span class="cgi-icon">☕</span>
-                                <div class="cgi-title">Brew Coffee</div>
-                                <div class="cgi-desc">This demo purposely returns a 413 error.</div>
-                                <form method="GET" action="/cgi-bin/brew_coffee.py">
-                                        <button type="submit" class="cgi-btn danger-btn">Order Coffee</button>
-                                </form>
-                        </div>
+			<div class="cgi-card">
+				<span class="cgi-icon">☕</span>
+				<div class="cgi-title">Coffee Time</div>
+				<div class="cgi-desc">Do you want some Coffee!</div>
+				<form method="GET" action="/cgi-bin/badscript.py">
+					<button type="submit" class="cgi-btn coffee-btn">Brew Coffee</button>
+				</form>
+				<!-- <a href="/cgi-bin/badscript.py" class="cgi-btn danger-btn">Trigger Error</a> -->
+			</div>
+
 		</div>
 
 		<div class="cgi-card">
