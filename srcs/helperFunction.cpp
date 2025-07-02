@@ -6,7 +6,7 @@
 /*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/16 17:19:59 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/25 01:41:34 by kellen           ###   ########.fr       */
+/*   Updated: 2025/07/03 00:29:26 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,7 +124,7 @@ void debugImageServing(const std::string& path, const std::string& fullPath) {
 	// Get content type
 	Response resp;
 	std::string contentType = resp.getContentType(fullPath);
-	std::cout << "   📝 Content-Type: " << contentType << std::endl;
+//	std::cout << "   📝 Content-Type: " << contentType << std::endl;
 
 	// Check if it's a valid image type
 	if (contentType.find("image/") == 0) {
@@ -136,7 +136,7 @@ void debugImageServing(const std::string& path, const std::string& fullPath) {
 
 void serveStaticFile(std::string path, int client_fd, const ServerConfig &config) {
 	// Check if the path is empty or just a slash, then use the index file
-	std::cout << "🗂️ Serving static file: fullPath = '" << path << "'" << std::endl;
+//	std::cout << "🗂️ Serving static file: fullPath = '" << path << "'" << std::endl;
 
 	if (path.empty() || path == "/")
 		path = "/" + config.index;
@@ -161,7 +161,7 @@ void serveStaticFile(std::string path, int client_fd, const ServerConfig &config
 	// Get content type
 	Response resp;
 	std::string contentType = resp.getContentType(fullPath);
-	std::cout << "📝 Content-Type: " << contentType << std::endl;
+//	std::cout << "📝 Content-Type: " << contentType << std::endl;
 
 	// Check if we should use chunked transfer
 	if (useChunkedTransfer(fullPath)) {
@@ -169,7 +169,8 @@ void serveStaticFile(std::string path, int client_fd, const ServerConfig &config
 
 		if (sendFileChunked(client_fd, fullPath, contentType)) {
 			std::cout << "✅ Chunked transfer completed successfully" << std::endl;
-		} else {
+		}
+		else {
 			std::cout << "❌ Chunked transfer failed, sending error" << std::endl;
 			std::string errorBody = getErrorPageBody(500, config);
 			sendHtmlResponse(client_fd, 500, errorBody);
@@ -394,17 +395,17 @@ bool useChunkedTransfer(const std::string& fullPath) {
 	size_t fileSize = file.tellg();
 	file.close();
 
-	std::cout << "📏 File size: " << fileSize << " bytes (threshold: " << 1024 * 1024 << ")" << std::endl;
+//	std::cout << "📏 File size: " << fileSize << " bytes (threshold: " << 1024 * 1024 << ")" << std::endl;
 
 	bool useChunked = fileSize > 1024 * 1024;
-	std::cout << "📦 Will use chunked transfer: " << (useChunked ? "YES" : "NO") << std::endl;
+//	std::cout << "📦 Will use chunked transfer: " << (useChunked ? "YES" : "NO") << std::endl;
 
 	return useChunked;
 }
 
 // Send file using chunked transfer encoding
 bool sendFileChunked(int fd, const std::string& fullPath, const std::string& contentType) {
-	std::cout << "📦 Starting chunked transfer for: " << fullPath << std::endl;
+//	std::cout << "📦 Starting chunked transfer for: " << fullPath << std::endl;
 
 	std::ifstream file(fullPath.c_str(), std::ios::binary);
 	if (!file.is_open()) {
@@ -421,7 +422,7 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 	headers << "\r\n";
 
 	std::string headerStr = headers.str();
-	std::cout << "📤 Sending chunked headers (" << headerStr.size() << " bytes)" << std::endl;
+//	std::cout << "📤 Sending chunked headers (" << headerStr.size() << " bytes)" << std::endl;
 
 	ssize_t headerSent = send(fd, headerStr.c_str(), headerStr.size(), 0);
 	if (headerSent != (ssize_t)headerStr.size()) {
@@ -446,21 +447,21 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 
 		// Send chunk size
 		if (send(fd, chunkHeaderStr.c_str(), chunkHeaderStr.size(), 0) != (ssize_t)chunkHeaderStr.size()) {
-			std::cerr << "❌ Failed to send chunk header" << std::endl;
+//			std::cerr << "❌ Failed to send chunk header" << std::endl;
 			file.close();
 			return false;
 		}
 
 		// Send chunk data
 		if (send(fd, buffer, bytesRead, 0) != (ssize_t)bytesRead) {
-			std::cerr << "❌ Failed to send chunk data" << std::endl;
+//			std::cerr << "❌ Failed to send chunk data" << std::endl;
 			file.close();
 			return false;
 		}
 
 		// Send chunk trailing CRLF
 		if (send(fd, "\r\n", 2, 0) != 2) {
-			std::cerr << "❌ Failed to send chunk trailer" << std::endl;
+//			std::cerr << "❌ Failed to send chunk trailer" << std::endl;
 			file.close();
 			return false;
 		}

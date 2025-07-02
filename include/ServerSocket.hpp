@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerSocket.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/09 13:53:08 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/12 00:33:16 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 11:35:19 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <vector>
 #include <string>
 
-class ServerConfig;
+struct ServerConfig;
 
 //external helpers
 int		safe_socket(int domain, int type, int protocol);

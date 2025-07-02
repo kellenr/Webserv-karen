@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServ.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/16 17:19:29 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/16 16:57:57 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/30 15:16:26 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ int	init_webserv(std::string configPath) {
 		std::cerr << "❌ Error while parsing config: " << e.what() << std::endl;
 		return 1;
 	}
-	parser.print();
+//	parser.print();
 
 	const	std::vector<ServerConfig>& servers = parser.getServers();
 	if (servers.empty()) {
@@ -48,7 +48,6 @@ int	init_webserv(std::string configPath) {
 	runEventLoop(fds, fdToSocket, clients, clientToServer);
 
 	shutDownWebserv(serverSockets, clients);
-	std::cout << "👋 Bye bye!\n";
 	return 0;
 }
 

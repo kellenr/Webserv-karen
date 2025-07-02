@@ -3,21 +3,23 @@
 /*                                                        :::      ::::::::   */
 /*   ServerConfig.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/09 13:53:17 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/18 16:00:49 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 11:35:27 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef SERVERCONFIG_HPP
 # define SERVERCONFIG_HPP
 
+#include "LocationConfig.hpp"
 #include <string>
 #include <vector>
 #include <map>
 
-class LocationConfig;
+struct LocationConfig;
+
 struct	ServerConfig {
 		//raw is for testing, ensure we process everything (remove before finishing)
 	std::map<std::string, std::string> raw; //stores unprocessed directives

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CgiFunctions.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/19 15:38:46 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/24 03:00:07 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/30 17:49:03 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ WebServ acts like a middleman
 	-gets the output (i.e.HTML) back
 	-forward it to the browser
 */
-void handleCgi(const Request req, int fd, const ServerConfig& config, std::string interpreter) {
+/*void handleCgi(const Request req, int fd, const ServerConfig& config, std::string interpreter) {
 	const LocationConfig* location = findMatchingLocation(req.getPath(), config);
 	if (!location) {
 		std::cerr << "❌ Location for CGI request does not match\n";
@@ -81,7 +81,7 @@ void handleCgi(const Request req, int fd, const ServerConfig& config, std::strin
 		std::cerr << "❌ Failed to create pipes\n";
 		return;
 	}
-	std::cerr << "💡 Headers received:\n";
+//	std::cerr << "💡 Headers received:\n";
 	const std::map<std::string, std::string>& headers = req.getHeaders();
 	for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
 		std::cerr << it->first << ": " << it->second << std::endl;
@@ -147,22 +147,70 @@ void handleCgi(const Request req, int fd, const ServerConfig& config, std::strin
 		//parent process
 		close(inputPipe[0]);
 		close(outputPipe[1]);
+		fcntl(outputPipe[0], F_SETFL, O_NONBLOCK); //set output pipe to non-blocking mode
 
 		//send body to CGI if POST method
 		if (req.getMethod() == "POST")
 			write(inputPipe[1], req.getBody().c_str(), req.getBody().length());
 		close(inputPipe[1]);
 
+		time_t start = time(NULL);
+		int status = 0;
+		bool timetokill = false;
+		while (true) {
+			int timeout = 5; //5 seconds
+			pid_t result = waitpid(pid, &status, WNOHANG);
+
+			if (result == pid) break; //child has finished
+			else if (result == -1) {
+				std::cerr << "❌ waitpid error\n";
+				break;
+			}
+			else {
+				if (time(NULL) - start > timeout) { //for a process kill if exceed timout
+					std::cerr << "⏰ CGI timeout, killing child process 🤺👶🩸😵\n";
+				kill(pid, SIGKILL);
+				waitpid(pid, &status, 0);
+				close(outputPipe[0]);
+				std::string timeoutResponse = 
+					"HTTP/1.1 504 Gateway Timeout\r\n"
+					"Content-Type: text/html\r\n\r\n"
+					"<html><body><h1>504 Gateway Timeout</h1></body></html>";
+				send(fd, timeoutResponse.c_str(), timeoutResponse.length(), 0);
+				timetokill = true;
+				break;
+				}
+			}
+			usleep(100000); //sleep for 100ms before retrying again.
+		}
 		//read from CGI output and send to client
 		char buffer[8192];
 		ssize_t bytes;
 		std::ostringstream response;
-
-		while((bytes = read(outputPipe[0], buffer, sizeof(buffer))) > 0)
-			response.write(buffer, bytes);
-
+		if (timetokill) {
+			return;
+		}
+		while(true) {
+			bytes = read(outputPipe[0], buffer, sizeof(buffer));
+			if (bytes > 0) {
+				response.write(buffer, bytes);
+			} 
+			else if (bytes == 0) {
+				break; //EOF reached
+			} 
+			else {
+				if (errno == EAGAIN || errno == EINTR) {
+					usleep(100000); //sleep for 100ms before retrying again.
+					continue;
+				} 
+				else {
+					std::cerr << "❌ Error reading CGI output. " << std::endl;
+					break;
+			
+				}
+			}
+		}
 		close(outputPipe[0]);
-		waitpid(pid, NULL, 0); //wait for child
 
 		std::string output = response.str();
 		size_t headerEnd =output.find("\r\n\r\n");
@@ -185,4 +233,4 @@ void handleCgi(const Request req, int fd, const ServerConfig& config, std::strin
 			std::cerr << "❌ CGI response was interrupted\n";
 		std::cout << "📤 CGI output:\n" << responseStr << std::endl;
 	}
-}
+}*/

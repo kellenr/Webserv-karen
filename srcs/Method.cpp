@@ -3,22 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   Method.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/11 23:13:55 by kellen            #+#    #+#             */
-/*   Updated: 2025/06/25 01:37:17 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/30 18:17:26 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServ.hpp"
 
 void handleGet(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config) {
-	std::cout << "📥 Handling GET request for " << path << std::endl;
+//	std::cout << "📥 Handling GET request for " << path << std::endl;
 
 	// First: Check if this is a CGI request FIRST (highest priority)
 	if (path.find("/cgi-bin/") == 0) {
-		std::cout << "🔧 This is a CGI GET request, calling handleSimpleCGI" << std::endl;
-
+		
 		// Call our improved handleSimpleCGI function
 		handleSimpleCGI(fd, req, path, config);
 		return;
@@ -40,7 +39,7 @@ void handleGet(int fd, const Request& req, const std::string& path, const Locati
 
 	// Check if path is a directory and autoindex is enabled
 	std::string fullPath = location.root + path;
-	std::cout << "🔧 DEBUG: fullPath = '" << fullPath << "'" << std::endl;
+//	std::cout << "🔧 DEBUG: fullPath = '" << fullPath << "'" << std::endl;
 
 
 	if (isDirectory(fullPath)) {
@@ -63,9 +62,9 @@ void handleGet(int fd, const Request& req, const std::string& path, const Locati
 		}
 	} else{
 		// Serve static file
-		std::cout << "📄 Calling serveStaticFile for: " << path << std::endl;
+//		std::cout << "📄 Calling serveStaticFile for: " << path << std::endl;
 		serveStaticFile(path, fd, config);
-		std::cout << "✅ serveStaticFile call completed" << std::endl;
+//		std::cout << "✅ serveStaticFile call completed" << std::endl;
 	}
 }
 
@@ -397,7 +396,7 @@ std::string generateSimpleDirectoryListing(const std::string& dirPath, const std
 }
 
 std::string rewriteURL(const std::string& path, const ServerConfig& config, const std::string& method) {
-	std::cout << "🔄 Rewriting URL: " << path << " with method: " << method << std::endl;
+//	std::cout << "🔄 Rewriting URL: " << path << " with method: " << method << std::endl;
 
 	// Handle root path
 	if (path == "/") {
@@ -561,7 +560,7 @@ void handleSimpleUpload(const std::string& request, int client_fd, const ServerC
 }
 
 void handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config) {
-	std::cout << "🚀 Starting Simple CGI execution for: " << path << std::endl;
+//	std::cout << "🚀 Starting Simple CGI execution for: " << path << std::endl;
 
 	// Step 1: Find the interpreter for this script
 	std::string interpreter = getInterpreter(path, config);
@@ -571,7 +570,6 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 		sendHtmlResponse(fd, 500, errorBody);
 		return;
 	}
-	std::cout << "✅ Found interpreter: " << interpreter << std::endl;
 
 	// Step 2: Build the full path to the script
 	std::string scriptPath = config.root + path;
@@ -581,8 +579,6 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 	if (queryPos != std::string::npos) {
 		scriptPath = scriptPath.substr(0, queryPos);
 	}
-	std::cout << "📁 Script path: " << scriptPath << std::endl;
-	std::cout << "🔍 Query string: " << req.getQuery() << std::endl;
 
 	// Step 3: Check if the script file exists
 	if (!fileExists(scriptPath)) {
@@ -607,7 +603,7 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 	}
 
 	// Step 5: Send the script output directly to the client
-	std::cout << "📤 Sending script output to client" << std::endl;
+//	std::cout << "📤 Sending script output to client" << std::endl;
 	ssize_t sent = send(fd, scriptOutput.c_str(), scriptOutput.size(), 0);
 	if (sent != (ssize_t)scriptOutput.size()) {
 		std::cerr << "❌ Failed to send complete CGI response" << std::endl;
@@ -618,7 +614,7 @@ void handleSimpleCGI(int fd, const Request& req, const std::string& path, const 
 
 // Helper function to execute the script
 std::string executeScript(const std::string& interpreter, const std::string& scriptPath, const Request& req) {
-	std::cout << "⚙️ Executing: " << interpreter << " " << scriptPath << std::endl;
+//	std::cout << "⚙️ Executing: " << interpreter << " " << scriptPath << std::endl;
 
 	// Create pipes for communication
 	int outputPipe[2];
@@ -642,7 +638,7 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 
 	if (pid == 0) {
 		// Child process: execute the script
-		std::cout << "👶 Child process: executing script" << std::endl;
+//		std::cout << "👶 Child process: executing script" << std::endl;
 
 		// Redirect stdin and stdout
 		dup2(inputPipe[0], STDIN_FILENO);
@@ -712,7 +708,7 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		exit(1);
 	} else {
 		// Parent process: read the output
-		std::cout << "👨‍👩‍👧‍👦 Parent process: reading script output" << std::endl;
+//		std::cout << "👨‍👩‍👧‍👦 Parent process: reading script output" << std::endl;
 		// Close unused pipe ends
 		close(inputPipe[0]);
 		close(outputPipe[1]);
@@ -720,16 +716,42 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		// Send POST data to script if any
 		std::string body = req.getBody();
 		if (!body.empty() && req.getMethod() == "POST") {
-			std::cout << "📤 Sending POST data to script (" << body.size() << " bytes)" << std::endl;
+//			std::cout << "📤 Sending POST data to script (" << body.size() << " bytes)" << std::endl;
 			write(inputPipe[1], body.c_str(), body.size());
 		}
 		close(inputPipe[1]); // Close input pipe
 
+		int status = 0;
+		time_t start = time(NULL);
+		bool timetokill = false;
+		while (true) {
+			pid_t result = waitpid(pid, &status, WNOHANG);
+
+			if (result == pid) break; //child has finished
+			if (result == -1) {
+				std::cerr << "❌ waitpid error\n";
+				break;
+			}
+			if (time(NULL) - start > 5) { //for a process kill if exceed timout of 5 seconds
+				std::cerr << "⏰ CGI timeout, killing child 🔪🩸😵\n";
+				kill(pid, SIGKILL);
+				waitpid(pid, &status, 0);
+				timetokill = true;
+				break;
+			}
+			usleep(100000); //sleep for 100ms before retrying again.
+		}
+		if (timetokill) {
+			std::cout << "⚠️ CGI script execution timed out" << std::endl;
+			close(outputPipe[0]);
+			return "HTTP/1.1 504 Gateway Timeout\r\n"
+					"Content-Type: text/html\r\n\r\n"
+					"<html><body><h1>504 Gateway Timeout</h1></body></html>";
+		}
 		// Read all output from the script
 		std::string output;
 		char buffer[8192];
 		ssize_t bytesRead;
-
 		while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {
 			output.append(buffer, bytesRead);
 		}
@@ -737,12 +759,11 @@ std::string executeScript(const std::string& interpreter, const std::string& scr
 		close(outputPipe[0]);
 
 		// Wait for child process to finish
-		int status;
-		waitpid(pid, &status, 0);
 
 		if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 			std::cout << "✅ Script executed successfully" << std::endl;
-		} else {
+		} 
+		else {
 			std::cout << "⚠️ Script exited with status: " << WEXITSTATUS(status) << std::endl;
 		}
 
@@ -758,13 +779,13 @@ std::string formatCGIResponse(const std::string& scriptOutput) {
 		return "";
 	}
 
-	std::cout << "📋 Formatting CGI response (" << scriptOutput.size() << " bytes)" << std::endl;
+//	std::cout << "📋 Formatting CGI response (" << scriptOutput.size() << " bytes)" << std::endl;
 
 	// Check if the script already included HTTP headers
 	size_t headerEnd = scriptOutput.find("\r\n\r\n");
 	if (headerEnd != std::string::npos && scriptOutput.find("Content-Type:") < headerEnd) {
 		// Script provided its own headers, just add HTTP status line
-		std::cout << "✅ Script provided its own headers" << std::endl;
+//		std::cout << "✅ Script provided its own headers" << std::endl;
 		// Script provided its own headers, just add HTTP status line
 		return "HTTP/1.1 200 OK\r\n" + scriptOutput;
 	} else {

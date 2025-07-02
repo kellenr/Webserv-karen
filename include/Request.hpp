@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/19 07:09:51 by kellen            #+#    #+#             */
-/*   Updated: 2025/06/12 03:30:19 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 14:09:28 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ class Request {
 		std::string getPath() const;
 		std::string getBody() const;
 		std::string getQuery() const;
-//    std::string getTarget() const;
+	    std::string getTarget() const;
 		const std::map<std::string, std::string>& getHeaders() const;
 	private:
 		std::string _method;

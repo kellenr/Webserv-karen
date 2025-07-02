@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   initSocket.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 13:58:50 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/24 21:00:34 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 15:35:09 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -157,14 +157,14 @@ void handleExistingClient(int fd, std::vector<pollfd> &fds,
 		std::string method = req.getMethod();
 		std::string path = req.getPath();
 
-		std::cout << "📨 " << method << " " << path << std::endl;
+//		std::cout << "📨 " << method << " " << path << std::endl;
 
 		// URL rewriting for clean URLs - BUT NOT FOR POST UPLOADS
 		std::string actualPath = path;
 		if (method == "GET") {
 			actualPath = rewriteURL(path, config, method);
 			if (actualPath != path) {
-				std::cout << "🔄 URL rewrite: " << path << " → " << actualPath << std::endl;
+//				std::cout << "🔄 URL rewrite: " << path << " → " << actualPath << std::endl;
 				path = actualPath;
 			}
 		} else {

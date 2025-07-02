@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/19 07:11:37 by kellen            #+#    #+#             */
-/*   Updated: 2025/06/25 00:31:34 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 15:10:30 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,6 @@ std::string Request::getBody() const {
 		return "";
 	return _raw.substr(pos + 4);
 }
-
 
 std::string Request::getQuery() const {
 	return _query;

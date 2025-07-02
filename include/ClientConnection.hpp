@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientConnection.hpp                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/09 13:53:30 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/12 00:20:45 by kellen           ###   ########.fr       */
+/*   Updated: 2025/06/25 14:03:53 by kbolon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 #define CLIENTCONNECTION_HPP
 
 #include <string>
-
 
 enum ClientState {
   READING_HEADERS,
