@@ -133,6 +133,7 @@ std::string	formatCGIResponse(const std::string& scriptOutput);
 // Chunked transfer functions (no class needed!)
 bool		useChunkedTransfer(const std::string& fullPath);
 bool		sendFileChunked(int fd, const std::string& fullPath, const std::string& contentType);
+bool            sendAll(int fd, const char* buffer, size_t length);
 
 // Enhanced PUT handling functions
 void		handleFileRename(int fd, const std::string& path, const std::string& newName,
