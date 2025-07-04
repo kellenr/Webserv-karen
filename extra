@@ -1,139 +1,233 @@
-// Add these to WebServ.hpp (no structure needed)
-bool extractAllFilesFromRequestSimple(const std::string& request,
-	std::vector<std::string>& filenames,
-	std::vector<size_t>& contentStarts,
-	std::vector<size_t>& contentLengths);
-void handleMultipleUploadSimple(const std::string& request, int client_fd, const ServerConfig& config);
+// Add these improvements to your initSocket.cpp handleExistingClient function
 
-// Implementation in Utils.cpp
-void handleMultipleUploadSimple(const std::string& request, int client_fd, const ServerConfig& config) {
-std::cout << "🚀 Starting MULTIPLE file upload process..." << std::endl;
+// void handleExistingClient(int fd, std::vector<pollfd> &fds,
+// 	std::map<int, ClientConnection*>& clients, size_t& i,
+// 	const ServerConfig& config)
+// {
+// 	std::map<int, ClientConnection*>::iterator it = clients.find(fd);
+// 	if (it == clients.end()) {
+// 		std::cerr << "❌ Unknown client fd: " << fd << std::endl;
+// 		handleClientCleanup(fd, fds, clients, i);
+// 		return;
+// 	}
 
-// Use parallel vectors to store file information
-std::vector<std::string> filenames;
-std::vector<size_t> contentStarts;
-std::vector<size_t> contentLengths;
+// 	ClientConnection* client = it->second;
+// 	bool shouldCleanup = true; // Default to cleanup unless we explicitly set otherwise
 
-// Step 1: Extract all files from the request
-if (!extractAllFilesFromRequestSimple(request, filenames, contentStarts, contentLengths)) {
-std::cerr << "❌ No files found in request" << std::endl;
-sendHtmlResponse(client_fd, 400, getErrorPageBody(400, config));
-return;
-}
+// 	try {
+// 		// Read data from client
+// 		int bytes = client->recvFullRequest(fd, config);
+// 		if (bytes <= 0) {
+// 			std::cout << "🔌 Client disconnected or recv failed" << std::endl;
+// 			handleClientCleanup(fd, fds, clients, i);
+// 			return;
+// 		}
 
-std::cout << "📁 Found " << filenames.size() << " files to upload" << std::endl;
+// 		// Check if request is complete
+// 		if (!client->isRequestComplete()) {
+// 			shouldCleanup = false; // Keep connection alive for more data
+// 			return;
+// 		}
 
-// Step 2: Validate all files first
-for (size_t i = 0; i < filenames.size(); ++i) {
-if (!validateUploadFileSize(contentLengths[i], config)) {
-std::cerr << "❌ File too large: " << filenames[i] << " (" << contentLengths[i] << " bytes)" << std::endl;
-sendHtmlResponse(client_fd, 413, getErrorPageBody(413, config));
-return;
-}
-}
+// 		std::string request = client->getRawRequest();
+// 		if (request.empty()) {
+// 			std::cout << "⚠️ Empty request received" << std::endl;
+// 			handleClientCleanup(fd, fds, clients, i);
+// 			return;
+// 		}
 
-// Step 3: Process each file
-std::vector<std::string> successfulUploads;
-std::vector<std::string> failedUploads;
+// 		// Parse request
+// 		Request req(request);
+// 		std::string method = req.getMethod();
+// 		std::string path = req.getPath();
 
-for (size_t i = 0; i < filenames.size(); ++i) {
-std::cout << "📝 Processing file " << (i + 1) << "/" << filenames.size() << ": " << filenames[i] << std::endl;
+// 		std::cout << "📨 " << method << " " << path << std::endl;
 
-std::string filePath = config.root + "/upload/" + filenames[i];
+// 		// URL rewriting for clean URLs - BUT NOT FOR POST UPLOADS
+// 		std::string actualPath = path;
+// 		if (method == "GET") {
+// 			actualPath = rewriteURL(path, config, method);
+// 			if (actualPath != path) {
+// 				path = actualPath;
+// 			}
+// 		}
 
-if (writeFileToServer(request, contentStarts[i], contentLengths[i], filePath)) {
-std::cout << "✅ Successfully uploaded: " << filenames[i] << std::endl;
-successfulUploads.push_back(filenames[i]);
-} else {
-std::cerr << "❌ Failed to upload: " << filenames[i] << std::endl;
-failedUploads.push_back(filenames[i]);
-}
-}
+// 		// Find matching location
+// 		LocationConfig location = matchLocation(path, config);
 
-// Step 4: Send response
-if (failedUploads.empty()) {
-std::string successResponse = loadAndProcessMultipleSuccessTemplate(config, successfulUploads);
-sendHtmlResponse(client_fd, 200, successResponse);
-std::cout << "📤 All " << successfulUploads.size() << " files uploaded successfully!" << std::endl;
-} else {
-std::string errorResponse = generatePartialUploadResponse(config, successfulUploads, failedUploads);
-sendHtmlResponse(client_fd, 207, errorResponse); // 207 Multi-Status
-std::cout << "⚠️ Partial upload: " << successfulUploads.size() << " success, " << failedUploads.size() << " failed" << std::endl;
-}
-}
+// 		// 🔄 CHECK FOR REDIRECTS FIRST (before method validation)
+// 		if (!location.redirect.empty()) {
+// 			std::cout << "🔄 Found redirect for " << path << " -> " << location.redirect << std::endl;
 
-bool extractAllFilesFromRequestSimple(const std::string& request,
-	std::vector<std::string>& filenames,
-	std::vector<size_t>& contentStarts,
-	std::vector<size_t>& contentLengths) {
+// 			int statusCode = 302; // Default to 302 (temporary redirect)
+// 			if (location.returnStatusCode >= 300 && location.returnStatusCode < 400) {
+// 				statusCode = location.returnStatusCode;
+// 			}
 
-// Extract boundary from Content-Type header
-std::string boundary = extractBoundary(request);
-if (boundary.empty()) {
-std::cerr << "❌ No boundary found in request" << std::endl;
-return false;
-}
+// 			// Build redirect response
+// 			std::ostringstream response;
+// 			response << "HTTP/1.1 " << statusCode << " " << HttpStatus::getStatusMessages(statusCode) << "\r\n";
+// 			response << "Location: " << location.redirect << "\r\n";
+// 			response << "Connection: close\r\n";
+// 			response << "\r\n";
 
-std::string fullBoundary = "--" + boundary;
-std::cout << "🔍 Using boundary: " << fullBoundary << std::endl;
+// 			std::string responseStr = response.str();
+// 			if (!safeSend(fd, responseStr)) {
+// 				std::cout << "❌ Failed to send redirect response" << std::endl;
+// 			}
+// 			handleClientCleanup(fd, fds, clients, i);
+// 			return;
+// 		}
 
-// Find all file parts in the request
-size_t searchPos = 0;
-while (true) {
-// Find next boundary
-size_t boundaryPos = request.find(fullBoundary, searchPos);
-if (boundaryPos == std::string::npos) break;
+// 		// Check if method is allowed in this location
+// 		bool methodAllowed = false;
+// 		for (size_t j = 0; j < location.methods.size(); ++j) {
+// 			if (location.methods[j] == method) {
+// 				methodAllowed = true;
+// 				break;
+// 			}
+// 		}
 
-// Look for filename in this part
-size_t nextBoundaryPos = request.find(fullBoundary, boundaryPos + fullBoundary.length());
-if (nextBoundaryPos == std::string::npos) {
-nextBoundaryPos = request.length();
-}
+// 		if (!methodAllowed) {
+// 			std::cout << "❌ Method " << method << " not allowed for " << path << std::endl;
+// 			std::string body = getErrorPageBody(405, config);
+// 			sendHtmlResponse(fd, 405, body);
+// 			handleClientCleanup(fd, fds, clients, i);
+// 			return;
+// 		}
 
-std::string part = request.substr(boundaryPos, nextBoundaryPos - boundaryPos);
+// 		// *** IMPROVED METHOD HANDLING WITH BETTER ERROR RECOVERY ***
+// 		bool requestHandled = false;
 
-// Check if this part contains a file
-size_t filenamePos = part.find("filename=\"");
-if (filenamePos != std::string::npos) {
-// Extract filename
-size_t filenameStart = filenamePos + 10; // Length of "filename=\""
-size_t filenameEnd = part.find("\"", filenameStart);
-if (filenameEnd != std::string::npos) {
-std::string filename = part.substr(filenameStart, filenameEnd - filenameStart);
+// 		if (method == "GET") {
+// 			requestHandled = handleGet(fd, req, path, location, config);
+// 		} else if (method == "POST") {
+// 			requestHandled = handlePost(fd, req, path, location, config);
+// 		} else if (method == "PUT") {
+// 			handlePut(fd, req, path, location, config);
+// 			requestHandled = true; // PUT doesn't return bool
+// 		} else if (method == "DELETE") {
+// 			handleDelete(fd, path, location, config);
+// 			requestHandled = true; // DELETE doesn't return bool
+// 		} else if (method == "HEAD") {
+// 			requestHandled = handleHead(fd, path, location, config);
+// 		} else {
+// 			std::cout << "❌ Method " << method << " not implemented" << std::endl;
+// 			std::string body = getErrorPageBody(501, config);
+// 			sendHtmlResponse(fd, 501, body);
+// 			requestHandled = true; // We handled the error
+// 		}
 
-if (!filename.empty() && filename != "\"\"") {
-// Find content start (after double CRLF)
-size_t contentStartMarker = part.find("\r\n\r\n");
-if (contentStartMarker != std::string::npos) {
-size_t contentStart = boundaryPos + contentStartMarker + 4;
+// 		// *** ALWAYS CLEANUP AFTER REQUEST PROCESSING ***
+// 		if (!requestHandled) {
+// 			std::cout << "⚠️ Request was not handled successfully, sending 500 error" << std::endl;
+// 			// Try to send a final error response if nothing was sent
+// 			std::string errorResponse =
+// 				"HTTP/1.1 500 Internal Server Error\r\n"
+// 				"Content-Type: text/html\r\n"
+// 				"Connection: close\r\n"
+// 				"\r\n"
+// 				"<html><body><h1>500 Internal Server Error</h1></body></html>";
+// 			safeSend(fd, errorResponse); // Don't check return value, we're cleaning up anyway
+// 		}
 
-// Find content end (before next boundary or end)
-size_t contentEnd = nextBoundaryPos;
-// Adjust for CRLF before boundary
-if (contentEnd >= 2 &&
-request[contentEnd - 1] == '\n' &&
-request[contentEnd - 2] == '\r') {
-contentEnd -= 2;
-}
+// 	} catch (const std::exception& e) {
+// 		std::cerr << "❌ Exception handling client " << fd << ": " << e.what() << std::endl;
+// 		// Try to send error response
+// 		std::string errorResponse =
+// 			"HTTP/1.1 500 Internal Server Error\r\n"
+// 			"Content-Type: text/html\r\n"
+// 			"Connection: close\r\n"
+// 			"\r\n"
+// 			"<html><body><h1>500 Internal Server Error</h1></body></html>";
+// 		safeSend(fd, errorResponse); // Don't check return value
+// 	} catch (...) {
+// 		std::cerr << "❌ Unknown exception handling client " << fd << std::endl;
+// 	}
 
-size_t contentLength = contentEnd - contentStart;
+// 	// *** ALWAYS CLEANUP CLIENT CONNECTION ***
+// 	// This ensures no hanging connections after errors
+// 	if (shouldCleanup) {
+// 		handleClientCleanup(fd, fds, clients, i);
+// 	}
+// }
 
-if (contentLength > 0) {
-// Add to our parallel vectors
-filenames.push_back(filename);
-contentStarts.push_back(contentStart);
-contentLengths.push_back(contentLength);
+// // Improved safeSend function with better error handling
+// bool safeSend(int fd, const std::string& data) {
+// 	if (data.empty()) {
+// 		std::cerr << "⚠️ Attempted to send empty data" << std::endl;
+// 		return false;
+// 	}
 
-std::cout << "📄 Found file: " << filename
-	 << " (size: " << contentLength << " bytes)" << std::endl;
-}
-}
-}
-}
-}
+// 	const char* buffer = data.c_str();
+// 	size_t totalBytes = data.size();
+// 	size_t bytesSent = 0;
+// 	int retryCount = 0;
+// 	const int maxRetries = 3;
 
-searchPos = nextBoundaryPos;
-}
+// 	while (bytesSent < totalBytes && retryCount < maxRetries) {
+// 		ssize_t result = send(fd, buffer + bytesSent, totalBytes - bytesSent, MSG_NOSIGNAL);
 
-return !filenames.empty();
-}
+// 		if (result > 0) {
+// 			bytesSent += result;
+// 			retryCount = 0; // Reset retry count on successful send
+// 		} else if (result == 0) {
+// 			std::cerr << "❌ Connection closed by peer during send" << std::endl;
+// 			return false;
+// 		} else {
+// 			// Error occurred
+// 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+// 				// Non-blocking socket would block, wait a bit and retry
+// 				usleep(10000); // 10ms
+// 				retryCount++;
+// 				continue;
+// 			} else if (errno == EPIPE || errno == ECONNRESET) {
+// 				std::cerr << "❌ Connection broken during send" << std::endl;
+// 				return false;
+// 			} else {
+// 				std::cerr << "❌ Send error: " << strerror(errno) << std::endl;
+// 				retryCount++;
+// 				usleep(10000); // 10ms before retry
+// 			}
+// 		}
+// 	}
+
+// 	if (bytesSent < totalBytes) {
+// 		std::cerr << "❌ Failed to send all data. Sent " << bytesSent << "/" << totalBytes << " bytes" << std::endl;
+// 		return false;
+// 	}
+
+// 	return true;
+// }
+
+// // Improved client cleanup function
+// void handleClientCleanup(int fd, std::vector<pollfd>& fds,
+// 		std::map<int, ClientConnection*>& clients, size_t& i) {
+
+// 	std::cout << "🧹 Cleaning up client connection: " << fd << std::endl;
+
+// 	// Remove from clients map and delete the object
+// 	std::map<int, ClientConnection*>::iterator it = clients.find(fd);
+// 	if (it != clients.end()) {
+// 		delete it->second;
+// 		clients.erase(it);
+// 	}
+
+// 	// Close the socket
+// 	if (close(fd) == -1) {
+// 		std::cerr << "⚠️ Error closing socket " << fd << ": " << strerror(errno) << std::endl;
+// 	}
+
+// 	// Remove from poll fds vector
+// 	for (std::vector<pollfd>::iterator pollIt = fds.begin(); pollIt != fds.end(); ++pollIt) {
+// 		if (pollIt->fd == fd) {
+// 			fds.erase(pollIt);
+// 			if (i > 0) {
+// 				--i; // Adjust iterator index
+// 			}
+// 			break;
+// 		}
+// 	}
+
+// 	std::cout << "✅ Client cleanup completed for fd: " << fd << std::endl;
+// }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   initSocket.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
+/*   By: keramos- <keramos-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 13:58:50 by kbolon            #+#    #+#             */
-/*   Updated: 2025/06/25 15:35:09 by kbolon           ###   ########.fr       */
+/*   Updated: 2025/07/04 16:09:52 by keramos-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,7 +61,7 @@ void	runEventLoop(	std::vector<struct pollfd>& fds,
 		if (ready < 0) {
 			if (errno == EINTR)
 				continue;
-			std::cerr << "❌ Poll() error: " << strerror(errno) << std::endl;
+			std::cerr << "❌ Poll() error" << std::endl;
 			break;
 		}
 		//handle ready FD's (if there is data to read)
@@ -71,7 +71,7 @@ void	runEventLoop(	std::vector<struct pollfd>& fds,
 			int fd = fds[i].fd;
 
 			if (tempRevent & (POLLERR | POLLHUP | POLLNVAL)) {
-				std::cerr << "❌ Error or hangup on client side\n" << fd << std::endl;
+				std::cerr << "❌ Error or hangup on client side: " << fd << std::endl;
 				close(fd);
 				fds.erase(fds.begin() + i);
 				--i;
@@ -167,18 +167,43 @@ void handleExistingClient(int fd, std::vector<pollfd> &fds,
 //				std::cout << "🔄 URL rewrite: " << path << " → " << actualPath << std::endl;
 				path = actualPath;
 			}
-		} else {
-			// For POST, PUT, DELETE - keep original path
-			std::cout << "📌 Keeping original path for " << method << ": " << path << std::endl;
 		}
-		// std::string actualPath = rewriteURL(path, config);
-		// if (actualPath != path) {
-		// 	std::cout << "🔄 URL rewrite: " << path << " → " << actualPath << std::endl;
-		// 	path = actualPath;
-		// }
-
 		// Find matching location
 		LocationConfig location = matchLocation(path, config);
+
+		// 🔄 CHECK FOR REDIRECTS FIRST (before method validation)
+		if (!location.redirect.empty()) {
+			std::cout << "🔄 Found redirect for " << path << " -> " << location.redirect << std::endl;
+
+			// Determine the correct status code
+			int statusCode = 302; // Default to 302 (temporary redirect)
+
+			// If return status code is specified and it's a 3xx redirect code, use it
+			if (location.returnStatusCode >= 300 && location.returnStatusCode < 400) {
+				statusCode = location.returnStatusCode;
+				std::cout << "   Using specified status code: " << statusCode << std::endl;
+			} else {
+				std::cout << "   Using default status code: " << statusCode << " (temporary redirect)" << std::endl;
+			}
+
+			// Build redirect response using your HttpStatus function
+			std::ostringstream response;
+			response << "HTTP/1.1 " << statusCode << " " << HttpStatus::getStatusMessages(statusCode) << "\r\n";
+			response << "Location: " << location.redirect << "\r\n";
+			response << "Connection: close\r\n";
+			response << "\r\n";
+
+			std::string responseStr = response.str();
+			//std::cout << "Sending redirect response:\n" << responseStr << std::endl;
+
+			if (!safeSend(fd, responseStr)) {
+				handleClientCleanup(fd, fds, clients, i);
+				return;
+			}
+
+			handleClientCleanup(fd, fds, clients, i);
+			return;
+		}
 
 		// Check if method is allowed in this location
 		bool methodAllowed = false;
@@ -200,10 +225,14 @@ void handleExistingClient(int fd, std::vector<pollfd> &fds,
 		// Handle different HTTP methods with CORRECT parameter order
 		if (method == "GET") {
 			// handleGET(fd, path, location, config)
-			handleGet(fd, req, path, location, config);
+			if (!handleGet(fd, req, path, location, config)) {
+				handleClientCleanup(fd, fds, clients, i);
+			}
 		} else if (method == "POST") {
 			// handlePOST(fd, req, path, location, config)
-			handlePost(fd, req, path, location, config);
+			if (!handlePost(fd, req, path, location, config)) {
+				handleClientCleanup(fd, fds, clients, i);
+			}
 		} else if (method == "PUT") {
 			// handlePUT(fd, req, path, location, config)
 			handlePut(fd, req, path, location, config);
@@ -212,7 +241,9 @@ void handleExistingClient(int fd, std::vector<pollfd> &fds,
 			handleDelete(fd, path, location, config);
 		} else if (method == "HEAD") {
 			// handleHEAD(fd, path, location, config)
-			handleHead(fd, path, location, config);
+			if (!handleHead(fd, path, location, config)){
+				handleClientCleanup(fd, fds, clients, i);
+			}
 		} else {
 			std::cout << "❌ Method " << method << " not implemented" << std::endl;
 			std::string body = getErrorPageBody(501, config); // Not Implemented

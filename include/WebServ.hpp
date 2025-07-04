@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServ.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kbolon <kbolon@42.fr>                      +#+  +:+       +#+        */
+/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/15 17:27:43 by keramos-          #+#    #+#             */
-/*   Updated: 2025/06/25 14:19:27 by kbolon           ###   ########.fr       */
+/*   Updated: 2025/07/03 21:17:25 by kellen           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,8 @@ std::string	getContentType(const std::string& path);
 int			safe_socket(int domain, int type, int protocol);
 bool		safe_bind(int fd, sockaddr_in & addr);
 bool		safe_listen(int socket, int backlog);
+bool 		safeSend(int fd, const std::string& data);
+bool 		sendAll(int fd, const char* buffer, size_t length);
 void		shutDownWebserv(std::vector<ServerSocket*>& serverSockets, std::map<int, ClientConnection*>& clients);
 void 		handleUpload(const std::string &request, int client_fd, const ServerConfig &config);
 void 		serveStaticFile(std::string path, int client_fd, const ServerConfig &config);
@@ -87,11 +89,12 @@ void		handleNewClient(ServerSocket* server, std::vector<pollfd> &fds, std::map<i
 				std::map<int, ServerSocket*>& clientToServer);
 LocationConfig	matchLocation(const std::string& path, const ServerConfig& config);
 // Add function declarations to WebServ.hpp
-void		handleGet(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config);
-void		handlePost(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config);
+bool		handleGet(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config);
+bool		handlePost(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config);
 void		handlePut(int fd, const Request& req, const std::string& path, const LocationConfig& location, const ServerConfig& config);
 void		handleDelete(int fd, const std::string& path, const LocationConfig& location, const ServerConfig& config);
-void		handleHead(int fd, const std::string& path, const LocationConfig& location, const ServerConfig& config);
+bool		handleHead(int fd, const std::string& path, const LocationConfig& location, const ServerConfig& config);
+bool		handleRedirect(int fd, const LocationConfig& location, const ServerConfig& config);
 
 // Helper Functions
 void		handleClientCleanup(int fd, std::vector<pollfd>& fds, std::map<int, ClientConnection*>& clients, size_t& i);
@@ -101,7 +104,7 @@ void		createDirectoryIfNotExists(const std::string& path);
 std::string	getContentType(const std::string& path);
 std::string	generateSimpleDirectoryListing(const std::string& dirPath, const std::string& urlPath);
 void		handleSimpleUpload(const std::string& request, int client_fd, const ServerConfig& config);
-void		handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config);
+bool		handleSimpleCGI(int fd, const Request& req, const std::string& path, const ServerConfig& config);
 
 
 // URL Rewriting (if you haven't added this yet)
@@ -133,7 +136,6 @@ std::string	formatCGIResponse(const std::string& scriptOutput);
 // Chunked transfer functions (no class needed!)
 bool		useChunkedTransfer(const std::string& fullPath);
 bool		sendFileChunked(int fd, const std::string& fullPath, const std::string& contentType);
-bool            sendAll(int fd, const char* buffer, size_t length);
 
 // Enhanced PUT handling functions
 void		handleFileRename(int fd, const std::string& path, const std::string& newName,

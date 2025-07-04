@@ -43,7 +43,6 @@ end
 
 puts '<html>'
 puts '<head>'
-puts '<title>Weather Station</title>'
 puts '<style>'
 puts 'body {'
 puts '  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;'

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   helperFunction.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kellen <kellen@student.42.fr>              +#+  +:+       +#+        */
+/*   By: keramos- <keramos-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/16 17:19:59 by kbolon            #+#    #+#             */
-/*   Updated: 2025/07/03 00:29:26 by kellen           ###   ########.fr       */
+/*   Updated: 2025/07/04 16:46:00 by keramos-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,24 +55,6 @@ bool	safe_listen(int socket, int backlog) {
 	return true;
 }
 
-bool sendAll(int fd, const char* buffer, size_t length) {
-    size_t totalSent = 0;
-    while (totalSent < length) {
-        ssize_t sent = send(fd, buffer + totalSent, length - totalSent, 0);
-        if (sent < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-                usleep(1000);
-                continue;
-            }
-            return false;
-        }
-        if (sent == 0)
-            return false;
-        totalSent += sent;
-    }
-    return true;
-}
-
 std::string	trim(std::string& s) {
 	size_t	start = s.find_first_not_of(" \t\r\n");
 	size_t end = s.find_last_not_of(" \t\r\n");
@@ -84,6 +66,23 @@ std::string	trim(std::string& s) {
 		s = s.substr(start, end - start + 1);
 		return s;
 	}
+}
+
+bool safeSend(int fd, const std::string& data) {
+	ssize_t sent = send(fd, data.c_str(), data.size(), 0);
+
+	if (sent == -1) {
+		// Error case
+		std::cerr << "❌ send() failed\n";
+		return false;
+	} else if (sent != (ssize_t)data.size()) {
+		// Partial send case
+		std::cerr << "⚠️ Partial send: only " << sent << " bytes sent out of " << data.size() << "\n";
+		return false;
+	}
+
+	// Success case: sent == data.size()
+	return true;
 }
 
 std::string	cleanValue(std::string s) {
@@ -183,7 +182,7 @@ void serveStaticFile(std::string path, int client_fd, const ServerConfig &config
 
 	// Check if we should use chunked transfer
 	if (useChunkedTransfer(fullPath)) {
-		std::cout << "🚀 Using CHUNKED TRANSFER for large file" << std::endl;
+//		std::cout << "🚀 Using CHUNKED TRANSFER for large file" << std::endl;
 
 		if (sendFileChunked(client_fd, fullPath, contentType)) {
 			std::cout << "✅ Chunked transfer completed successfully" << std::endl;
@@ -197,7 +196,7 @@ void serveStaticFile(std::string path, int client_fd, const ServerConfig &config
 	}
 
 	// Use regular transfer for smaller files
-	std::cout << "📄 Using REGULAR TRANSFER for normal-sized file" << std::endl;
+	//std::cout << "📄 Using REGULAR TRANSFER for normal-sized file" << std::endl;
 
 	std::ifstream file(fullPath.c_str(), std::ios::binary);
 	if (!file.is_open()) {
@@ -209,16 +208,11 @@ void serveStaticFile(std::string path, int client_fd, const ServerConfig &config
 
 	std::string body((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	file.close();
-	// sendHtmlResponse(client_fd, 200, body);
-	// Response resp;
-	// std::string contentType = resp.getContentType(fullPath);
+
 	std::string response = Response::build(200, body, contentType);
-	ssize_t sent = send(client_fd, response.c_str(), response.size(), 0);
-	if (sent != (ssize_t)response.size()) {
-			std::cerr << "❌ Failed to send response for status code: " << sent << " of " << response.size() << " bytes\n";
-	} else {
-		std::cout << "✅ Successfully served: " << fullPath << " (" << body.size() << " bytes)" << std::endl;
-	}
+	if (!safeSend(client_fd, response))
+		return;
+
 }
 
 std::string extractBoundary(const std::string& request) {
@@ -259,9 +253,9 @@ std::string extractBoundary(const std::string& request) {
 void sendHtmlResponse(int fd, int code, const std::string& body) {
 
 	std::string response = Response::build(code, body, "text/html");
-        if (!sendAll(fd, response.c_str(), response.size())) {
-                std::cerr << "❌ Failed to send response for status code: " << code << "\n";
-        }
+	if (!safeSend(fd, response))
+		return;
+
 }
 
 /*
@@ -412,17 +406,13 @@ bool useChunkedTransfer(const std::string& fullPath) {
 	size_t fileSize = file.tellg();
 	file.close();
 
-//	std::cout << "📏 File size: " << fileSize << " bytes (threshold: " << 1024 * 1024 << ")" << std::endl;
-
 	bool useChunked = fileSize > 1024 * 1024;
-//	std::cout << "📦 Will use chunked transfer: " << (useChunked ? "YES" : "NO") << std::endl;
 
 	return useChunked;
 }
 
 // Send file using chunked transfer encoding
 bool sendFileChunked(int fd, const std::string& fullPath, const std::string& contentType) {
-//	std::cout << "📦 Starting chunked transfer for: " << fullPath << std::endl;
 
 	std::ifstream file(fullPath.c_str(), std::ios::binary);
 	if (!file.is_open()) {
@@ -439,13 +429,11 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 	headers << "\r\n";
 
 	std::string headerStr = headers.str();
-//	std::cout << "📤 Sending chunked headers (" << headerStr.size() << " bytes)" << std::endl;
-
 	if (!sendAll(fd, headerStr.c_str(), headerStr.size())) {
-        std::cerr << "❌ Failed to send chunked headers" << std::endl;
-        file.close();
-        return false;
-    }
+		std::cerr << "❌ Failed to send chunked headers" << std::endl;
+		file.close();
+		return false;
+	}
 
 	// Send file in chunks
 	char buffer[65536];
@@ -463,21 +451,18 @@ bool sendFileChunked(int fd, const std::string& fullPath, const std::string& con
 
 		// Send chunk size
 		if (!sendAll(fd, chunkHeaderStr.c_str(), chunkHeaderStr.size())) {
-//			std::cerr << "❌ Failed to send chunk header" << std::endl;
 			file.close();
 			return false;
 		}
 
 		// Send chunk data
 		if (!sendAll(fd, buffer, bytesRead)) {
-//			std::cerr << "❌ Failed to send chunk data" << std::endl;
 			file.close();
 			return false;
 		}
 
 		// Send chunk trailing CRLF
 		if (!sendAll(fd, "\r\n", 2)) {
-//			std::cerr << "❌ Failed to send chunk trailer" << std::endl;
 			file.close();
 			return false;
 		}
@@ -554,6 +539,27 @@ bool extractFilenameFromSection(const std::string& request, size_t sectionStart,
 
 	filename = section.substr(filenameStart, filenameEnd - filenameStart);
 	return !filename.empty();
+}
+
+bool sendAll(int fd, const char* buffer, size_t length) {
+	size_t totalSent = 0;
+	int retryCount = 0;
+	const int maxRetries = 1000;
+
+	while (totalSent < length) {
+		ssize_t sent = send(fd, buffer + totalSent, length - totalSent, 0);
+		if (sent < 0) {
+			if (++retryCount > maxRetries)
+				return false;
+			usleep(1000);
+			continue;
+		}
+		if (sent == 0)
+			return false;
+		totalSent += sent;
+		retryCount = 0; // Reset on successful send
+	}
+	return true;
 }
 
 /**

@@ -176,8 +176,8 @@ gallery_themes = {
 	"cotton_candy": {"emoji": "🍭", "name": "Cotton Candy Clouds", "bg": "linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)"},
 	"rainbow": {"emoji": "🌈", "name": "Rainbow Magic", "bg": "linear-gradient(135deg, #ff9a9e 0%, #fecfef 25%, #a8edea 50%, #d299c2 75%, #fef9d7 100%)"},
 	"starlight": {"emoji": "⭐", "name": "Starlight Wonder", "bg": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"},
-	"gothic": {"emoji": "🌙", "name": "Midnight Magic", "bg": "linear-gradient(135deg, #1f1f4a 0%, #40407a 50%, #8b5a96 100%)"},
-	"violet": {"emoji": "💜", "name": "Violet Dreams", "bg": "linear-gradient(135deg, #7a3994 0%, #bb307a 50%, #e9acfb 100%)"},
+	"gothic": {"emoji": "🌙", "name": "Midnight Magic", "bg": "linear-gradient(135deg, #2c2c54 0%, #40407a 50%, #8b5a96 100%)"},
+	"violet": {"emoji": "💜", "name": "Violet Dreams", "bg": "linear-gradient(135deg, #9b59b6 0%, #bb377d 50%, #f8e1ff 100%)"},
 	"shadow": {"emoji": "🖤", "name": "Shadow Shine", "bg": "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 30%, #2d2d2d 60%, #6a1b9a 100%)"}
 }
 
